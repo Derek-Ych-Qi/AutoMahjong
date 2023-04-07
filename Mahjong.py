@@ -100,11 +100,11 @@ def hulema(revealed, hidden):
     return hu, style
 
 
-def calcScore(revealed, hidden):
+def calcScore(revealed, hidden, zimo_fan):
     hu, style = hulema(revealed, hidden)
     if not hu:
         return 0
-    fan = 0
+    fan = zimo_fan #点炮=0, 自摸=1, 杠开/海底捞月=2, 杠开且海底捞月=3
     hand = revealed + hidden
     if len(hidden) == 2: #金钩钓
         fan += 1
