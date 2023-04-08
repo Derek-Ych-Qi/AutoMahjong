@@ -110,7 +110,7 @@ def calcScore(revealed, hidden, zimo_fan):
         fan += 1
     if all([_isKeorGang(ket) for ket in style if len(ket) > 2]): #碰碰胡
         fan += 1
-    if (min([x.num for x in hand]) > 1) and (max([x.num for x in hand] < 9)): #断幺九
+    if (min([x.num for x in hand]) > 1) and (max([x.num for x in hand]) < 9): #断幺九
         fan += 1
 
     if set([x.num for x in hand]).issubset( {2,5,8} ): #258

@@ -29,7 +29,7 @@ class Game(object):
     def onCardServed(self, card, player, afterGang=False):
         self.logger.info(f"Player {player.id} draw card {card} afterGang={afterGang}")
         player.draw(card)
-        player_action = player.anyAction()
+        player_action = player.anyActionSelf()
         if player_action == 'HU':
             #self-draw
             zimo_fan = 1
@@ -38,7 +38,7 @@ class Game(object):
             if afterGang:
                 zimo_fan += 1
 
-            score, style = calcScore(player.revealed, player.hidden, zimo_fan)
+            score = calcScore(player.revealed, player.hidden, zimo_fan)
             self.logger.info(f"Player {player.id} HU card {card} self draw")
             for p in self.players:
                 if p == player:
@@ -50,6 +50,8 @@ class Game(object):
             player.hidden.remove(card)
             player.huList.append(card)
         elif player_action == 'GANG':
+            if not player.gang(card):
+                pass #illegal action
             self.logger.info(f"Player {player.id} GANG card {card} self draw")
             for p in self.players:
                 if p == player:
@@ -63,12 +65,12 @@ class Game(object):
             self.onCardPlayed(player.discard(), player, afterGang)
 
     def onCardPlayed(self, card, source_player, afterGang=False):
-        self.logger.info(f"Player {source_player} played card {card} afterGang={afterGang}")
+        self.logger.info(f"Player {source_player.id} played card {card} afterGang={afterGang}")
         action_list_others = []
         for player in self.players:
             if player == source_player:
                 continue
-            player_action = player.anyAction(card, source_player)
+            player_action = player.anyActionOther(card, source_player)
             action_list_others.append((player, player_action))
         # hu > peng/gang
         for player, action in action_list_others:
@@ -79,19 +81,21 @@ class Game(object):
                         #抢杠胡
                         source_player = player1
                         gangFan += 1
-                score, style = calcScore(player.revealed, sorted(player.hidden+[card]), gangFan)
+                score = calcScore(player.revealed, sorted(player.hidden+[card]), gangFan)
                 player.score += score
                 source_player.score -= score
                 player.huList.append(card)
                 self.curr_player = player
                 break
             elif action == "PENG":
-                player.peng(card)
+                if not player.peng(card):
+                    pass #illegal action
                 self.curr_player = player
                 self.onCardPlayed(player.discard(), player, False)
                 break
             elif action == "GANG":
-                player.gang(card)
+                if not player.gang(card):
+                    pass #illegal action
                 self.curr_player = player
                 self.onCardPlayed(player.discard(), player, True)
                 break
@@ -111,6 +115,7 @@ class Game(object):
         for p in self.players:
             p.claimShortSuit()
         #regular game
+        self.onCardServed(None, self.curr_player, False) # Dealer play first card
         while len(self.deck) > 0:
             self.curr_player = self.getNextPlayer(self.curr_player)
             self.onCardServed(self.deck.pop(0), self.curr_player, afterGang=False)

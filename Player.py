@@ -21,28 +21,41 @@ class Player(object):
         NotImplemented
 
     def draw(self, card):
-        self.hidden.append(card)
+        if not card is None: # dealer first draw card = None
+            self.hidden.append(card)
         self.hidden = sorted(self.hidden)
     
-    def anyAction(self):
+    def anyActionSelf(self):
         """
         player has just draw a card
         hu or gang or discard a card
         """
         NotImplemented
 
-    def anyAction(self, card, source_player):
+    def anyActionOther(self, card, source_player):
         """
         card is played by other player
         peng, gang or hu or do nothing
         """
         NotImplemented
 
-    def discard(self, card):
+    def discard(self):
         """
-        player discard a card
+        player discard a card, return the played card
         """
-        i = [str(x) for x in self.hidden].index(str(card))
+        NotImplemented
+
+    def discardCard(self, card):
+        """
+        discard by card instance, return played card
+        """
+        return self.discardCardStr(str(card))
+
+    def discardCardStr(self, card_str):
+        """
+        discard by card name
+        """
+        i = [str(x) for x in self.hidden].index(card_str)
         return self.hidden.pop(i)
     
     def peng(self, card):
@@ -68,7 +81,7 @@ class Player(object):
         return True
 
     def hu(self):
-        score, style = calcScore(self.revealed, self.hidden)
+        score = calcScore(self.revealed, self.hidden, 1)
         return score
 
 class HumanPlayer(Player):
@@ -78,16 +91,44 @@ class HumanPlayer(Player):
     
     def claimShortSuit(self):
         print(self.revealed + self.hidden)
-        shortSuit = input()
+        shortSuit = input(f"{self.id} Claim short suit [P/S/W]:")
         return shortSuit
 
-    def anyAction(self):
+    def anyActionSelf(self):
         print(self.revealed + self.hidden)
-        action = input()
+        action = input(f"{self.id} action: [GANG/HU/NOTHING]:")
         return action
     
-    def anyAction(self, card, source_player):
-        print(card)
+    def discard(self):
         print(self.revealed + self.hidden)
-        action = input()
+        card_str = input(f"{self.id} play a card")
+        return self.discardCardStr(card_str)
+
+    def anyActionOther(self, card, source_player):
+        print(self.revealed + self.hidden)
+        action = input(f"{self.id} action on {source_player.id} playing {card}: [PENG/GANG/HU/NOTHING]:")
         return action
+
+class DummyPlayer(Player):
+    def __init__(self, id):
+        super().__init__()
+        self.id = f'Dummy_{id}'
+    
+    def claimShortSuit(self):
+        return np.random.choice(['W','S','P'])
+    
+    def anyActionSelf(self):
+        if self.hu() > 0:
+            return "HU"
+        else:
+            return "NOTHING"
+    
+    def discard(self):
+        discard_index = np.random.randint(0, len(self.hidden)-1)
+        return self.hidden.pop(discard_index)
+
+    def anyActionOther(self, card, source_player):
+        if calcScore(self.revealed, self.hidden + [card], 0) > 0:
+            return "HU"
+        else:
+            return "NOTHING"
