@@ -9,6 +9,7 @@ class Player(object):
         self.game = None
         self.revealed = []
         self.hidden = []
+        self.hule = False
         self.huList = []
         self.discardedList = []
         self.score = 0
@@ -92,6 +93,7 @@ class HumanPlayer(Player):
     def claimShortSuit(self):
         print(self.revealed + self.hidden)
         shortSuit = input(f"{self.id} Claim short suit [P/S/W]:")
+        self.shortSuit = shortSuit
         return shortSuit
 
     def anyActionSelf(self):
@@ -115,7 +117,15 @@ class DummyPlayer(Player):
         self.id = f'Dummy_{id}'
     
     def claimShortSuit(self):
-        return np.random.choice(['W','S','P'])
+        _suit_map = {'W':0, 'P':0, 'S':0}
+        for card in self.hidden:
+            _suit_map[card.suit] += 1
+        shortSuit = 'W'
+        for suit in ['S', 'P']:
+            if _suit_map[suit] < _suit_map[shortSuit]:
+                shortSuit = suit
+        self.shortSuit = shortSuit
+        return shortSuit
     
     def anyActionSelf(self):
         if self.hu() > 0:
@@ -125,6 +135,11 @@ class DummyPlayer(Player):
     
     def discard(self):
         discard_index = np.random.randint(0, len(self.hidden)-1)
+        for i in range(len(self.hidden)):
+            card = self.hidden[i]
+            if card.suit == self.shortSuit:
+                discard_index = i
+                break
         return self.hidden.pop(discard_index)
 
     def anyActionOther(self, card, source_player):

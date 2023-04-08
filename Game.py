@@ -27,7 +27,7 @@ class Game(object):
         return self.players[i-1]
 
     def onCardServed(self, card, player, afterGang=False):
-        self.logger.info(f"Player {player.id} draw card {card} afterGang={afterGang}")
+        self.logger.info(f"Player {player.id} draw card {card} afterGang={afterGang} remaining deck={len(self.deck)}")
         player.draw(card)
         player_action = player.anyActionSelf()
         if player_action == 'HU':
@@ -48,6 +48,7 @@ class Game(object):
                     p.score -= score
                     self.logger.info(f"Player {player.id} score -{score}, current score {player.score}")
             player.hidden.remove(card)
+            player.hule = True
             player.huList.append(card)
         elif player_action == 'GANG':
             if not player.gang(card):
@@ -62,7 +63,10 @@ class Game(object):
                     self.logger.info(f"Player {player.id} score -2, current score {player.score}")
             self.onCardServed(self.deck.pop(), player, afterGang=True)
         else: #Nothing
-            self.onCardPlayed(player.discard(), player, afterGang)
+            if player.hule:
+                self.onCardPlayed(player.discardCard(card), player, afterGang)
+            else:
+                self.onCardPlayed(player.discard(), player, afterGang)
 
     def onCardPlayed(self, card, source_player, afterGang=False):
         self.logger.info(f"Player {source_player.id} played card {card} afterGang={afterGang}")
@@ -82,8 +86,11 @@ class Game(object):
                         source_player = player1
                         gangFan += 1
                 score = calcScore(player.revealed, sorted(player.hidden+[card]), gangFan)
+                self.logger.info(f"Player {player.id} score +{score}, current score {player.score}")
+                self.logger.info(f"Player {source_player.id} score -{score}, current score {source_player.score}")
                 player.score += score
                 source_player.score -= score
+                player.hule = True
                 player.huList.append(card)
                 self.curr_player = player
                 break
@@ -96,6 +103,10 @@ class Game(object):
             elif action == "GANG":
                 if not player.gang(card):
                     pass #illegal action
+                self.logger.info(f"Player {player.id} score +2, current score {player.score}")
+                self.logger.info(f"Player {source_player.id} score -2, current score {source_player.score}")
+                player.score += 2
+                source_player.score -= 2
                 self.curr_player = player
                 self.onCardPlayed(player.discard(), player, True)
                 break
