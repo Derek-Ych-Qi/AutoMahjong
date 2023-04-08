@@ -63,8 +63,6 @@ class Player(object):
     def peng(self, card):
         i = [str(x) for x in self.hidden].index(str(card))
         j = [str(x) for x in self.hidden].index(str(card), i+1)
-        if i == -1 or j == -1:
-            return False
         card1 = self.hidden.pop(j)
         card2 = self.hidden.pop(i)
         self.revealed.append([card1, card2, card])
@@ -74,11 +72,9 @@ class Player(object):
         i = [str(x) for x in self.hidden].index(str(card))
         j = [str(x) for x in self.hidden].index(str(card), i+1)
         k = [str(x) for x in self.hidden].index(str(card), j+1)
-        if i == -1 or j == -1 or k == -1:
-            return False
-        card1 = self.hidden.pop(j)
-        card2 = self.hidden.pop(i)
-        card3 = self.hidden.pop(k)
+        card1 = self.hidden.pop(k)
+        card2 = self.hidden.pop(j)
+        card3 = self.hidden.pop(i)
         self.revealed.append([card1, card2, card3, card])
         return True
 
@@ -115,7 +111,6 @@ class HumanPlayer(Player):
                 print(f"Invalid passing suit {passing_suit}")
                 continue
             passing_num = input(f"{self.id} passing nums [X,Y,Z]:").split(',')
-            print(passing_num)
             for s in passing_num:
                 cardStr = f'{s}{passing_suit}'
                 passingCards.append(self.discardCardStr(cardStr))
