@@ -105,7 +105,7 @@ def calcScore(revealed, hidden, zimo_fan):
     if not hu:
         return 0
     fan = zimo_fan #点炮=0, 自摸=1, 杠开/海底捞月=2, 杠开且海底捞月=3
-    hand = revealed + hidden
+    hand = [card for ket in revealed for card in ket] + hidden
     if len(hidden) == 2: #金钩钓
         fan += 1
     if all([_isKeorGang(ket) for ket in style if len(ket) > 2]): #碰碰胡
