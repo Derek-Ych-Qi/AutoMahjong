@@ -108,14 +108,14 @@ class HumanPlayer(Player):
         for card in self.hidden:
             _suit_map[card.suit] += 1
         print(self.hidden)
-        passingCards = []
         while True:
+            passingCards = []
             passing_suit = input(f"{self.id} Passing suit [P/S/W]:")
             if _suit_map[passing_suit] < 3:
                 print(f"Invalid passing suit {passing_suit}")
                 continue
-            # passing_num = ','.split(input(f"{self.id} passing nums [X,Y,Z]:"))
             passing_num = input(f"{self.id} passing nums [X,Y,Z]:").split(',')
+            print(passing_num)
             for s in passing_num:
                 cardStr = f'{s}{passing_suit}'
                 passingCards.append(self.discardCardStr(cardStr))
@@ -127,6 +127,7 @@ class HumanPlayer(Player):
         print(self.hidden)
         shortSuit = input(f"{self.id} Claim short suit [P/S/W]:")
         self.shortSuit = shortSuit
+        print(f"{self.id} short suit is {shortSuit}")
         return shortSuit
 
     def anyActionSelf(self):
@@ -136,7 +137,7 @@ class HumanPlayer(Player):
     
     def discard(self):
         print(self.revealed + self.hidden)
-        card_str = input(f"{self.id} play a card")
+        card_str = input(f"{self.id} play a card:")
         return self.discardCardStr(card_str)
 
     def anyActionOther(self, card, source_player):
@@ -171,6 +172,7 @@ class DummyPlayer(Player):
             if _suit_map[suit] < _suit_map[shortSuit]:
                 shortSuit = suit
         self.shortSuit = shortSuit
+        print(f"{self.id} short suit is {shortSuit}")
         return shortSuit
     
     def anyActionSelf(self):
