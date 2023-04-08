@@ -120,7 +120,16 @@ class Game(object):
             player.draw(self.deck.pop(0))
             player = self.getNextPlayer(player)
         self.curr_player.draw(self.deck.pop(0))
-        #pass card
+        #pass three cards
+        passing_index = np.random.randint(1,3)
+        passing_cards = {}
+        for player in self.players:
+            passing_cards[player] = player.passThreeCards()
+        for player in self.players:
+            dest_index = (self.players.index(player) + passing_index) % 4 # 1: next player, 2: player across, 3: previous player
+            dest_player = self.players[dest_index]
+            dest_player.hidden += passing_cards[player]
+            dest_player.hidden = sorted(dest_player.hidden)
 
         #claim short suit
         for p in self.players:
@@ -130,3 +139,8 @@ class Game(object):
         while len(self.deck) > 0:
             self.curr_player = self.getNextPlayer(self.curr_player)
             self.onCardServed(self.deck.pop(0), self.curr_player, afterGang=False)
+        self.end()
+    
+    def end(self):
+        for player in self.players:
+            player.endGameSummary()

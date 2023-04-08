@@ -52,7 +52,7 @@ def _isSet(x:list) -> bool:
     else:
         if x[0] == x[1] and x[0] == x[2]:
             return True
-        elif (x[1].num - x[0].num == 1) & (x[2].num - x[1].num == 1):
+        elif (x[1].num - x[0].num == 1) & (x[2].num - x[1].num == 1) & (x[0].suit == x[1].suit) & (x[0].suit == x[2].suit):
             return True
         else:
             return False
@@ -129,14 +129,14 @@ def calcScore(revealed, hidden, zimo_fan):
 
 def tingpai(revealed, hidden):
     if len(hidden) == 1:
-        return [hidden[0].__str__(), calcScore(revealed, hidden*2)]
+        return [hidden[0].__str__(), calcScore(revealed, hidden*2, 0)]
     else:
         tinglist = []
         for i in range(27):
             newcard = Mahjong(id=i)
             if not newcard.suit in [x.suit for x in hidden]:
                 continue
-            score = calcScore(revealed, hidden + [newcard])
+            score = calcScore(revealed, hidden + [newcard], 0)
             if score > 0:
                 tinglist.append([newcard.__str__(), score])
         return tinglist

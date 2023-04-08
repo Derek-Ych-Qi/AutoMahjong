@@ -11,6 +11,7 @@ class Player(object):
         self.hidden = []
         self.hule = False
         self.huList = []
+        self.tingList = []
         self.discardedList = []
         self.score = 0
         self.logger = logging.getLogger(self.id)
@@ -84,14 +85,45 @@ class Player(object):
     def hu(self):
         score = calcScore(self.revealed, self.hidden, 1)
         return score
+    
+    def ting(self):
+        self.tingList = tingpai(self.revealed, self.hidden)
+
+    def endGameSummary(self):
+        print('=' * 100)
+        print(f"{self.id} score={self.score}")
+        print(f"Hand {self.revealed + self.hidden}")
+        if self.hule:
+            print(self.huList)
+        self.ting()
+        print(self.tingList)
 
 class HumanPlayer(Player):
     def __init__(self, name):
         super().__init__()
         self.id = name
     
+    def passThreeCards(self):
+        _suit_map = {'W':0, 'P':0, 'S':0}
+        for card in self.hidden:
+            _suit_map[card.suit] += 1
+        print(self.hidden)
+        passingCards = []
+        while True:
+            passing_suit = input(f"{self.id} Passing suit [P/S/W]:")
+            if _suit_map[passing_suit] < 3:
+                print(f"Invalid passing suit {passing_suit}")
+                continue
+            passing_num = ','.split(input(f"{self.id} passing nums [X,Y,Z]:"))
+            for s in passing_num:
+                cardStr = f'{s}{passing_suit}'
+                passingCards.append(self.discardCardStr(cardStr))
+            if len(passingCards) == 3:
+                break
+        return passingCards
+
     def claimShortSuit(self):
-        print(self.revealed + self.hidden)
+        print(self.hidden)
         shortSuit = input(f"{self.id} Claim short suit [P/S/W]:")
         self.shortSuit = shortSuit
         return shortSuit
@@ -116,6 +148,19 @@ class DummyPlayer(Player):
         super().__init__()
         self.id = f'Dummy_{id}'
     
+    def passThreeCards(self):
+        _suit_map = {'W':0, 'P':0, 'S':0}
+        for card in self.hidden:
+            _suit_map[card.suit] += 1
+        _suits = ['W', 'S', 'P']
+        np.random.shuffle(_suits)
+        for suit in _suits:
+            if _suit_map[suit] >= 3:
+                passingSuit = suit
+                break
+        _passing = np.random.choice([x for x in self.hidden if x.suit == passingSuit], 3, replace=False)
+        return [self.discardCard(x) for x in _passing]
+
     def claimShortSuit(self):
         _suit_map = {'W':0, 'P':0, 'S':0}
         for card in self.hidden:
