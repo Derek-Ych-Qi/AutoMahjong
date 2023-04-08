@@ -114,7 +114,8 @@ class HumanPlayer(Player):
             if _suit_map[passing_suit] < 3:
                 print(f"Invalid passing suit {passing_suit}")
                 continue
-            passing_num = ','.split(input(f"{self.id} passing nums [X,Y,Z]:"))
+            # passing_num = ','.split(input(f"{self.id} passing nums [X,Y,Z]:"))
+            passing_num = input(f"{self.id} passing nums [X,Y,Z]:").split(',')
             for s in passing_num:
                 cardStr = f'{s}{passing_suit}'
                 passingCards.append(self.discardCardStr(cardStr))
