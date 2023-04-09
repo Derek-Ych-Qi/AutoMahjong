@@ -60,6 +60,14 @@ class Player(object):
         i = [str(x) for x in self.hidden].index(card_str)
         return self.hidden.pop(i)
     
+    def canPeng(self, card):
+        try:
+            i = [str(x) for x in self.hidden].index(str(card))
+            j = [str(x) for x in self.hidden].index(str(card), i+1)
+            return True
+        except:
+            return False
+
     def peng(self, card):
         i = [str(x) for x in self.hidden].index(str(card))
         j = [str(x) for x in self.hidden].index(str(card), i+1)
@@ -68,14 +76,31 @@ class Player(object):
         self.revealed.append([card1, card2, card])
         return True
     
+    def canGang(self, card):
+        try:
+            i = [str(x) for x in self.hidden].index(str(card))
+            j = [str(x) for x in self.hidden].index(str(card), i+1)
+            k = [str(x) for x in self.hidden].index(str(card), j+1)
+            return True
+        except:
+            for ket in self.revealed:
+                if str(ket[0]) == str(card):
+                    return True
+            return False
+
     def gang(self, card):
+        for ket in self.revealed:
+            if str(ket[0]) == str(card):
+                ket.append(card) #明杠
+                return True
+
         i = [str(x) for x in self.hidden].index(str(card))
         j = [str(x) for x in self.hidden].index(str(card), i+1)
         k = [str(x) for x in self.hidden].index(str(card), j+1)
         card1 = self.hidden.pop(k)
         card2 = self.hidden.pop(j)
         card3 = self.hidden.pop(i)
-        self.revealed.append([card1, card2, card3, card])
+        self.revealed.append([card1, card2, card3, card]) #暗杠
         return True
 
     def hu(self):
@@ -190,3 +215,80 @@ class DummyPlayer(Player):
             return "HU"
         else:
             return "NOTHING"
+
+class SimpleAIPlayer(Player):
+    def __init__(self, id):
+        super().__init__()
+        self.id = f"SimpleAI_{id}"
+    
+    def passThreeCards(self):
+        _suit_map = {'W':[], 'P':[], 'S':[]}
+        for card in self.hidden:
+            _suit_map[card.suit].append(card)
+        suits = ['W', 'P', 'S']
+        np.random.shuffle(suits)
+        min_cards = 9
+        for suit in suits:
+            if len(_suit_map[suit]) < 3:
+                continue
+            elif len(_suit_map[suit]) <= min_cards:
+                passingSuit = suit
+                min_cards = len(_suit_map[suit])
+        _passing = np.random.choice(_suit_map[passingSuit], 3, replace=False)
+        return [self.discardCard(x) for x in _passing]
+
+    def claimShortSuit(self):
+        _suit_map = {'W':0, 'P':0, 'S':0}
+        for card in self.hidden:
+            _suit_map[card.suit] += 1
+        shortSuit = 'W'
+        for suit in ['S', 'P']:
+            if _suit_map[suit] < _suit_map[shortSuit]:
+                shortSuit = suit
+        self.shortSuit = shortSuit
+        print(f"{self.id} short suit is {shortSuit}")
+        return shortSuit
+    
+    def anyActionSelf(self):
+        if self.hu() > 0:
+            return "HU"
+        else:
+            return "NOTHING"
+    
+    def discard(self):
+        discard_index = np.random.randint(0, len(self.hidden)-1)
+        tingscore_list = []
+        for i in range(len(self.hidden)):
+            card = self.hidden[i]
+            if card.suit == self.shortSuit:
+                discard_index = i
+                break
+            if i == 0:
+                fake_hidden = self.hidden[1:]
+            elif i == len(self.hidden)-1:
+                fake_hidden = self.hidden[0:i-1]
+            else:
+                fake_hidden = self.hidden[0:i-1] + self.hidden[i+1:]
+            tinglist = tingpai(self.revealed, fake_hidden)
+            tingscore = 0
+            for ting in tinglist:
+                tingscore += ting[1] # FIXME multiply by remaining cards
+            tingscore_list.append(tingscore)
+        
+        if len(tingscore_list) > 0 and max(tingscore_list) > 0:
+            discard_index = tingscore_list.index(max(tingscore_list))
+        else:
+            pass
+
+        return self.hidden.pop(discard_index)
+
+    def anyActionOther(self, card, source_player):
+        if calcScore(self.revealed, self.hidden + [card], 0) > 0:
+            return "HU"
+        elif self.canGang(card):
+            return "GANG"
+        elif self.canPeng(card):
+            return "PENG"
+        else:
+            return "NOTHING"
+    

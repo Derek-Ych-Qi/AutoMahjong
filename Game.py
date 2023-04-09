@@ -95,6 +95,8 @@ class Game(object):
                 self.curr_player = player
                 break
             elif action == "PENG":
+                if player.hule:
+                    break
                 if not player.peng(card):
                     pass #illegal action
                 self.curr_player = player

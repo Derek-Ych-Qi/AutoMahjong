@@ -129,7 +129,7 @@ def calcScore(revealed, hidden, zimo_fan):
 
 def tingpai(revealed, hidden):
     if len(hidden) == 1:
-        return [hidden[0].__str__(), calcScore(revealed, hidden*2, 0)]
+        return [[hidden[0].__str__(), calcScore(revealed, hidden*2, 0)]]
     else:
         tinglist = []
         for i in range(27):
