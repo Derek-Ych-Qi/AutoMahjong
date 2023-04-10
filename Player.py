@@ -312,23 +312,10 @@ class SimpleAIPlayer(Player):
                     discard_index = i
                     return self.hidden.pop(discard_index)
 
-        if self.pengpeng:
-            #做碰碰胡或七对
-            cardCount = [self.hidden.count(card) for card in self.hidden]
-            discardRange = [i for i in range(len(self.hidden)) if cardCount[i] < 2]
-            if len(discardRange) > 0:
-                discard_index = np.random.choice(discardRange)
-            else:
-                discard_index = np.random.randint(0, len(self.hidden)-1) #全是对但没有胡
-            return self.hidden.pop(discard_index)
-
-        discard_index = np.random.randint(0, len(self.hidden)-1)
+        #优先听牌
+        discard_index = 999
         tingscore_list = []
         for i in range(len(self.hidden)):
-            card = self.hidden[i]
-            if card.suit == self.shortSuit:
-                discard_index = i
-                break
             if i == 0:
                 fake_hidden = self.hidden[1:]
             elif i == len(self.hidden)-1:
@@ -346,6 +333,16 @@ class SimpleAIPlayer(Player):
             discard_index = tingscore_list.index(max(tingscore_list))
         else:
             pass
+
+        if discard_index > len(self.hidden) - 1:
+            #不拆对子
+            cardCount = [self.hidden.count(card) for card in self.hidden]
+            discardRange = [i for i in range(len(self.hidden)) if cardCount[i] < 2]
+            if len(discardRange) > 0:
+                discard_index = np.random.choice(discardRange)
+            else:
+                discard_index = np.random.randint(0, len(self.hidden)-1) #全是对但还没有胡
+            return self.hidden.pop(discard_index)
 
         return self.hidden.pop(discard_index)
 
