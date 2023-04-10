@@ -5,7 +5,7 @@ import logging
 logging.basicConfig(level="INFO")
 
 import numpy as np
-np.random.seed(42)
+#np.random.seed(53)
 
 def main():
     #east, south, west, north = HumanPlayer('East'), HumanPlayer('South'), HumanPlayer('West'), HumanPlayer('North')

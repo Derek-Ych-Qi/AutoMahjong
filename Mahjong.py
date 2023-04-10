@@ -11,8 +11,13 @@ MAX_FAN = 7
 @total_ordering
 class Mahjong(object):
     def __init__(self, id):
-        self.id = id
-        self.suit, self.num = DECK[id]
+        if type(id) == int:
+            self.id = id
+        elif type(id) == str:
+            self.id = int(id[0])-1 + ALL_SUITS.index(id[1]) * 9
+        else:
+            TypeError
+        self.suit, self.num = DECK[self.id]
         self.unicode_str = ''
 
     def __str__(self):
@@ -22,7 +27,7 @@ class Mahjong(object):
         return self.__str__()
 
     def __hash__(self):
-        return self.id
+        return self.id % 27
 
     def __eq__(self, other):
         return (self.suit == other.suit) & (self.num == other.num)
@@ -150,19 +155,22 @@ def tingpai(revealed, hidden):
 
 def testHu():
     #card_id = np.random.randint(0,TOTAL_CARDS,14)
-    card_id = [0,1,2,3,4,5,6,7,8,27,54,35,62,83] #九莲宝灯
+    #card_id = [0,1,2,3,4,5,6,7,8,27,54,35,62,83] #九莲宝灯
     #card_id = [0,1,2,3,4,5,6,27,28,29,30,31,32,33] #清七对
     #card_id = [0,1,2,3,4,5,27,28,29,30,31,32,59,86] #清龙七对
     #card_id = np.random.randint(0,36,14)
     #card_id = [(x // 9) * 27 + x % 9 for x in card_id]
-    hand = sorted([Mahjong(i) for i in card_id])
-    print(hand)
-    print(hulema([], hand), calcScore([], hand))
+    #hand = sorted([Mahjong(i) for i in card_id])
+    #print(hand)
+    revealed = ((Mahjong('5P'),Mahjong('5P'),Mahjong('5P')), (Mahjong('2W'),Mahjong('2W'),Mahjong('2W'),Mahjong('2W')))
+    hidden = (Mahjong('9P'),Mahjong('9P'),Mahjong('4W'),Mahjong('4W'),Mahjong('7W'),Mahjong('8W'),Mahjong('9W'))
+    print(calcScore(revealed, hidden, 0))
 
 def testTing():
-    card_id = [0,1,2,3,4,5,6,7,8,27,54,35,62]
-    hand = sorted([Mahjong(i) for i in card_id])
-    print(tingpai([], hand))
+    revealed = ((Mahjong('5P'),Mahjong('5P'),Mahjong('5P')), (Mahjong('2W'),Mahjong('2W'),Mahjong('2W'),Mahjong('2W')))
+    hidden = (Mahjong('9P'),Mahjong('9P'),Mahjong('4W'),Mahjong('7W'),Mahjong('8W'),Mahjong('9W'))
+    print(tingpai(revealed, hidden))
 
 if __name__ == "__main__":
+    testHu()
     testTing()

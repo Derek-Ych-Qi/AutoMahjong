@@ -86,30 +86,33 @@ class Player(object):
         self.revealed.append([card1, card2, card])
         return True
     
-    def canGang(self, card):
+    def canGang(self, card, fromHand=False):
         hidden_str = [str(x) for x in self.hidden]
         if hidden_str.count(str(card)) >= 3:
             return True
-        else:
+        elif fromHand:
             for ket in self.revealed:
                 if str(ket[0]) == str(card):
                     return True
             return False
+        else:
+            return False
 
-    def gang(self, card):
-        for ket in self.revealed:
-            if str(ket[0]) == str(card):
-                ket.append(card) #明杠
-                return True
-
-        i = [str(x) for x in self.hidden].index(str(card))
-        j = [str(x) for x in self.hidden].index(str(card), i+1)
-        k = [str(x) for x in self.hidden].index(str(card), j+1)
-        card1 = self.hidden.pop(k)
-        card2 = self.hidden.pop(j)
-        card3 = self.hidden.pop(i)
-        self.revealed.append([card1, card2, card3, card]) #暗杠
-        return True
+    def gang(self, card, fromHand=False):
+        if fromHand:
+            for ket in self.revealed:
+                if str(ket[0]) == str(card):
+                    ket.append(card) #明杠
+            return 1
+        else:
+            i = [str(x) for x in self.hidden].index(str(card))
+            j = [str(x) for x in self.hidden].index(str(card), i+1)
+            k = [str(x) for x in self.hidden].index(str(card), j+1)
+            card1 = self.hidden.pop(k)
+            card2 = self.hidden.pop(j)
+            card3 = self.hidden.pop(i)
+            self.revealed.append([card1, card2, card3, card]) #暗杠
+            return 2
 
     def hu(self):
         score = calcScore( *self.hashHand(), zimo_fan=1)
@@ -171,6 +174,8 @@ class HumanPlayer(Player):
         return self.discardCardStr(card_str)
 
     def anyActionOther(self, card, source_player):
+        if card.suit == self.shortSuit:
+            return "NOTHING"
         print(self.revealed + self.hidden)
         action = input(f"{self.id} action on {source_player.id} playing {card}: [PENG/GANG/HU/NOTHING]:")
         return action
@@ -227,10 +232,19 @@ class DummyPlayer(Player):
         else:
             return "NOTHING"
 
+def countKeAndPair(hidden):
+    card_map = {}
+    for card in hidden:
+        card_map[str(card)] = card_map.get(str(card), 0) + 1
+    return len([c for c, n in card_map.items() if n >= 2])
+
 class SimpleAIPlayer(Player):
     def __init__(self, id):
         super().__init__()
         self.id = f"SimpleAI_{id}"
+        self.planned = False
+        self.oneSuit = None
+        self.pengpeng = False
     
     def passThreeCards(self):
         _suit_map = {'W':[], 'P':[], 'S':[]}
@@ -260,6 +274,20 @@ class SimpleAIPlayer(Player):
         print(f"{self.id} short suit is {shortSuit}")
         return shortSuit
     
+    def plan(self):
+        """
+        called after initial hand, make a brief game plan
+        """
+        _suit_lists = [0,0,0]
+        for card in self.hidden:
+            _suit_lists[ALL_SUITS.index(card.suit)] += 1
+        if max(_suit_lists) >= 8:
+            self.oneSuit = ALL_SUITS[_suit_lists.index(max(_suit_lists))] #清一色
+        if countKeAndPair([c for c in self.hidden if c.suit != self.shortSuit]) >= 3:
+            self.pengpeng = True
+        self.planned = True
+        
+
     def anyActionSelf(self):
         if self.hu() > 0:
             return "HU"
@@ -267,6 +295,33 @@ class SimpleAIPlayer(Player):
             return "NOTHING"
     
     def discard(self):
+        if not self.planned:
+            self.plan()
+        #有缺打缺
+        for i in range(len(self.hidden)):
+            card = self.hidden[i]
+            if card.suit == self.shortSuit:
+                discard_index = i
+                return self.hidden.pop(discard_index)
+        
+        if not self.oneSuit is None:
+            #做清一色
+            for i in range(len(self.hidden)):
+                card = self.hidden[i]
+                if card.suit != self.oneSuit:
+                    discard_index = i
+                    return self.hidden.pop(discard_index)
+
+        if self.pengpeng:
+            #做碰碰胡或七对
+            cardCount = [self.hidden.count(card) for card in self.hidden]
+            discardRange = [i for i in range(len(self.hidden)) if cardCount[i] < 2]
+            if len(discardRange) > 0:
+                discard_index = np.random.choice(discardRange)
+            else:
+                discard_index = np.random.randint(0, len(self.hidden)-1) #全是对但没有胡
+            return self.hidden.pop(discard_index)
+
         discard_index = np.random.randint(0, len(self.hidden)-1)
         tingscore_list = []
         for i in range(len(self.hidden)):
