@@ -1,6 +1,7 @@
 import numpy as np
 from itertools import product
 from functools import total_ordering
+from functools import lru_cache
 TOTAL_CARDS = 3 * 9 * 4 #108
 ALL_SUITS = ['W', 'S', 'P'] #万条筒
 DECK = list( product(ALL_SUITS, range(1,10)) )*4
@@ -19,6 +20,9 @@ class Mahjong(object):
     
     def __repr__(self):
         return self.__str__()
+
+    def __hash__(self):
+        return self.id
 
     def __eq__(self, other):
         return (self.suit == other.suit) & (self.num == other.num)
@@ -69,7 +73,6 @@ def allPairs(revealed, hidden):
     else:
         return (False, [])
 
-
 def huHelper(revealed, hidden):
     #print(revealed, hidden)
     if _isPair(hidden):
@@ -99,8 +102,10 @@ def hulema(revealed, hidden):
     hu, style =  huHelper(revealed, hidden)
     return hu, style
 
-
+@lru_cache
 def calcScore(revealed, hidden, zimo_fan):
+    revealed = list(revealed)
+    hidden = list(hidden)
     hu, style = hulema(revealed, hidden)
     if not hu:
         return 0
@@ -127,16 +132,18 @@ def calcScore(revealed, hidden, zimo_fan):
 
     return 2 ** fan
 
+@lru_cache
 def tingpai(revealed, hidden):
     if len(hidden) == 1:
-        return [[hidden[0].__str__(), calcScore(revealed, hidden*2, 0)]]
+        return [[hidden[0].__str__(), calcScore(revealed, (hidden[0], hidden[0]), 0)]]
     else:
         tinglist = []
         for i in range(27):
             newcard = Mahjong(id=i)
             if not newcard.suit in [x.suit for x in hidden]:
                 continue
-            score = calcScore(revealed, hidden + [newcard], 0)
+            new_hidden = tuple(list(hidden) + [newcard])
+            score = calcScore(revealed, new_hidden, 0)
             if score > 0:
                 tinglist.append([newcard.__str__(), score])
         return tinglist

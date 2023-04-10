@@ -23,10 +23,24 @@ class Player(object):
         NotImplemented
 
     def draw(self, card):
-        if not card is None: # dealer first draw card = None
-            self.hidden.append(card)
+        if card is None:
+            # nothing
+            pass
+        else:
+            if type(card) == list:
+                self.hidden += card
+            else:
+                self.hidden.append(card)
         self.hidden = sorted(self.hidden)
     
+    def checkHand(self):
+        return len(self.hidden) % 3 == 1
+
+    def hashHand(self):
+        revealed_tuple = tuple(tuple(k) for k in self.revealed)
+        hidden_tuple = tuple(self.hidden)
+        return revealed_tuple, hidden_tuple
+
     def anyActionSelf(self):
         """
         player has just draw a card
@@ -61,12 +75,8 @@ class Player(object):
         return self.hidden.pop(i)
     
     def canPeng(self, card):
-        try:
-            i = [str(x) for x in self.hidden].index(str(card))
-            j = [str(x) for x in self.hidden].index(str(card), i+1)
-            return True
-        except:
-            return False
+        hidden_str = [str(x) for x in self.hidden]
+        return hidden_str.count(str(card)) >= 2
 
     def peng(self, card):
         i = [str(x) for x in self.hidden].index(str(card))
@@ -77,12 +87,10 @@ class Player(object):
         return True
     
     def canGang(self, card):
-        try:
-            i = [str(x) for x in self.hidden].index(str(card))
-            j = [str(x) for x in self.hidden].index(str(card), i+1)
-            k = [str(x) for x in self.hidden].index(str(card), j+1)
+        hidden_str = [str(x) for x in self.hidden]
+        if hidden_str.count(str(card)) >= 3:
             return True
-        except:
+        else:
             for ket in self.revealed:
                 if str(ket[0]) == str(card):
                     return True
@@ -104,20 +112,22 @@ class Player(object):
         return True
 
     def hu(self):
-        score = calcScore(self.revealed, self.hidden, 1)
+        score = calcScore( *self.hashHand(), zimo_fan=1)
         return score
     
     def ting(self):
-        self.tingList = tingpai(self.revealed, self.hidden)
+        self.tingList = tingpai(*self.hashHand())
 
-    def endGameSummary(self):
+    def currentState(self):
         print('=' * 100)
         print(f"{self.id} score={self.score}")
         print(f"Hand {self.revealed + self.hidden}")
         if self.hule:
-            print(self.huList)
+            print(f"Hu list {self.huList}")
         self.ting()
-        print(self.tingList)
+        print(f"Ting list {self.tingList}")
+
+### Implementation
 
 class HumanPlayer(Player):
     def __init__(self, name):
@@ -211,7 +221,8 @@ class DummyPlayer(Player):
         return self.hidden.pop(discard_index)
 
     def anyActionOther(self, card, source_player):
-        if calcScore(self.revealed, self.hidden + [card], 0) > 0:
+        revealed_tuple, hidden_tuple = self.hashHand()
+        if calcScore( revealed_tuple, tuple(self.hidden + [card]), 0) > 0:
             return "HU"
         else:
             return "NOTHING"
@@ -269,7 +280,8 @@ class SimpleAIPlayer(Player):
                 fake_hidden = self.hidden[0:i-1]
             else:
                 fake_hidden = self.hidden[0:i-1] + self.hidden[i+1:]
-            tinglist = tingpai(self.revealed, fake_hidden)
+            revealed_tuple, hidden_tuple = self.hashHand()
+            tinglist = tingpai( revealed_tuple, tuple(fake_hidden))
             tingscore = 0
             for ting in tinglist:
                 tingscore += ting[1] # FIXME multiply by remaining cards
@@ -283,7 +295,8 @@ class SimpleAIPlayer(Player):
         return self.hidden.pop(discard_index)
 
     def anyActionOther(self, card, source_player):
-        if calcScore(self.revealed, self.hidden + [card], 0) > 0:
+        revealed_tuple, hidden_tuple = self.hashHand()
+        if calcScore( revealed_tuple, tuple(self.hidden + [card]), 0) > 0:
             return "HU"
         elif self.canGang(card):
             return "GANG"

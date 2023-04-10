@@ -22,9 +22,8 @@ class Game(object):
         i = self.players.index(player)
         return self.players[(i+1)%4]
 
-    def getPrevPlayer(self, player):
-        i = self.players.index(player)
-        return self.players[i-1]
+    def getPlayerLists(self):
+        return self.players
 
     def onCardServed(self, card, player, afterGang=False):
         self.logger.info(f"Player {player.id} draw card {card} afterGang={afterGang} remaining deck={len(self.deck)}")
@@ -33,12 +32,12 @@ class Game(object):
         if player_action == 'HU':
             #self-draw
             zimo_fan = 1
-            if len(self.deck) == 0:
+            if len(self.deck) == 0: #海底捞月
                 zimo_fan += 1
-            if afterGang:
+            if afterGang: #杠上开花
                 zimo_fan += 1
 
-            score = calcScore(player.revealed, player.hidden, zimo_fan)
+            score = calcScore( *player.hashHand(), zimo_fan)
             self.logger.info(f"Player {player.id} HU card {card} self draw")
             for p in self.players:
                 if p == player:
@@ -50,9 +49,8 @@ class Game(object):
             player.hidden.remove(card)
             player.hule = True
             player.huList.append(card)
-        elif player_action == 'GANG':
-            if not player.gang(card):
-                pass #illegal action
+        elif player_action == 'GANG' and player.canGang(card):
+            player.gang(card)
             self.logger.info(f"Player {player.id} GANG card {card} self draw")
             for p in self.players:
                 if p == player:
@@ -85,7 +83,7 @@ class Game(object):
                         #抢杠胡
                         source_player = player1
                         gangFan += 1
-                score = calcScore(player.revealed, sorted(player.hidden+[card]), gangFan)
+                score = calcScore( player.hashHand()[0], tuple(sorted(player.hidden+[card])), gangFan)
                 self.logger.info(f"Player {player.id} score +{score}, current score {player.score}")
                 self.logger.info(f"Player {source_player.id} score -{score}, current score {source_player.score}")
                 player.score += score
@@ -94,17 +92,15 @@ class Game(object):
                 player.huList.append(card)
                 self.curr_player = player
                 break
-            elif action == "PENG":
-                if player.hule:
-                    break
-                if not player.peng(card):
-                    pass #illegal action
+            elif action == "PENG" and player.canPeng(card) and not player.hule:
+                self.logger.info(f"Player {player.id} PENG card {card} from player {source_player.id}")
+                player.peng(card)
                 self.curr_player = player
                 self.onCardPlayed(player.discard(), player, False)
                 break
-            elif action == "GANG":
-                if not player.gang(card):
-                    pass #illegal action
+            elif action == "GANG" and player.canGang(card):
+                self.logger.info(f"Player {player.id} GANG card {card} from player {source_player.id}")
+                player.gang(card)
                 self.logger.info(f"Player {player.id} score +2, current score {player.score}")
                 self.logger.info(f"Player {source_player.id} score -2, current score {source_player.score}")
                 player.score += 2
@@ -130,8 +126,7 @@ class Game(object):
         for player in self.players:
             dest_index = (self.players.index(player) + passing_index) % 4 # 1: next player, 2: player across, 3: previous player
             dest_player = self.players[dest_index]
-            dest_player.hidden += passing_cards[player]
-            dest_player.hidden = sorted(dest_player.hidden)
+            dest_player.draw(passing_cards[player])
 
         #claim short suit
         for p in self.players:
@@ -145,4 +140,4 @@ class Game(object):
     
     def end(self):
         for player in self.players:
-            player.endGameSummary()
+            player.currentState()
