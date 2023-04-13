@@ -334,15 +334,21 @@ class SimpleAIPlayer(Player):
         else:
             pass
 
-        if discard_index > len(self.hidden) - 1:
-            #不拆对子
-            cardCount = [self.hidden.count(card) for card in self.hidden]
-            discardRange = [i for i in range(len(self.hidden)) if cardCount[i] < 2]
-            if len(discardRange) > 0:
-                discard_index = np.random.choice(discardRange)
-            else:
-                discard_index = np.random.randint(0, len(self.hidden)-1) #全是对但还没有胡
-            return self.hidden.pop(discard_index)
+        _suit_nums = {'W':[], 'S':[], 'P':[]}
+        for card in self.hidden:
+            _suit_nums[card.suit].append(card.num)
+        _suit_nums_diff_map = {'W':[], 'S':[], 'P':[]}
+        for suit in ALL_SUITS:
+            if suit == self.shortSuit:
+                continue
+            _suit_nums_diff_map[suit] = list(np.abs(_suit_nums[suit] - np.mean(_suit_nums[suit])))
+        _suit_nums_diff_list = _suit_nums_diff_map['P'] + _suit_nums_diff_map['S'] + _suit_nums_diff_map['W'] #  sequence of this should be corresponding to self.hidden
+
+        cardCount = [self.hidden.count(card) for card in self.hidden]
+        discardRange = [i for i in range(len(self.hidden)) if cardCount[i] < 2]
+        diff_discard = [_suit_nums_diff_list[i] for i in discardRange]
+        maxdiff = max(diff_discard)
+        discard_index = discardRange[diff_discard.index(maxdiff)]
 
         return self.hidden.pop(discard_index)
 
