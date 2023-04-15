@@ -130,9 +130,10 @@ def calcScore(revealed, hidden, zimo_fan):
         fan += 2
     if len(style) > 5: #七对
         fan += 1
-    for ket in style: #杠
-        if len(ket) == 4:
-            fan += 1
+    card_num = {x: hand.count(x) for x in set(hand)}
+    for num in card_num.values():
+        if num == 4:
+            fan += 1 #根或杠
 
     return 2 ** fan
 
@@ -146,7 +147,7 @@ def tingpai(revealed, hidden):
             newcard = Mahjong(id=i)
             if not newcard.suit in [x.suit for x in hidden]:
                 continue
-            new_hidden = tuple(list(hidden) + [newcard])
+            new_hidden = tuple( sorted(list(hidden) + [newcard]) )
             score = calcScore(revealed, new_hidden, 0)
             if score > 0:
                 tinglist.append([newcard.__str__(), score])
@@ -161,13 +162,13 @@ def testHu():
     #card_id = [(x // 9) * 27 + x % 9 for x in card_id]
     #hand = sorted([Mahjong(i) for i in card_id])
     #print(hand)
-    revealed = ((Mahjong('5P'),Mahjong('5P'),Mahjong('5P')), (Mahjong('2W'),Mahjong('2W'),Mahjong('2W'),Mahjong('2W')))
-    hidden = (Mahjong('9P'),Mahjong('9P'),Mahjong('4W'),Mahjong('4W'),Mahjong('7W'),Mahjong('8W'),Mahjong('9W'))
+    revealed = ((Mahjong('9S'),Mahjong('9S'),Mahjong('9S')), (Mahjong('8S'),Mahjong('8S'),Mahjong('8S'),Mahjong('8S')))
+    hidden = (Mahjong('2S'),Mahjong('3S'),Mahjong('3S'),Mahjong('4S'),Mahjong('4S'),Mahjong('5S'),Mahjong('6S'),Mahjong('6S'))
     print(calcScore(revealed, hidden, 0))
 
 def testTing():
-    revealed = ((Mahjong('5P'),Mahjong('5P'),Mahjong('5P')), (Mahjong('2W'),Mahjong('2W'),Mahjong('2W'),Mahjong('2W')))
-    hidden = (Mahjong('9P'),Mahjong('9P'),Mahjong('4W'),Mahjong('7W'),Mahjong('8W'),Mahjong('9W'))
+    revealed = ((Mahjong('9S'),Mahjong('9S'),Mahjong('9S')), (Mahjong('8S'),Mahjong('8S'),Mahjong('8S'),Mahjong('8S')))
+    hidden = (Mahjong('2S'),Mahjong('3S'),Mahjong('4S'),Mahjong('4S'),Mahjong('5S'),Mahjong('6S'),Mahjong('6S'))
     print(tingpai(revealed, hidden))
 
 if __name__ == "__main__":
