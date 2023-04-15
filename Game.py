@@ -44,10 +44,10 @@ class Game(object):
             for p in self.players:
                 if p == player:
                     p.score += score * 3
-                    self.logger.info(f"Player {player.id} score +{score*3}, current score {player.score}")
+                    self.logger.info(f"Player {p.id} score +{score*3}, current score {p.score}")
                 else:
                     p.score -= score
-                    self.logger.info(f"Player {player.id} score -{score}, current score {player.score}")
+                    self.logger.info(f"Player {p.id} score -{score}, current score {p.score}")
             player.hidden.remove(card)
             player.hule = True
             player.huList.append(card)
@@ -58,10 +58,10 @@ class Game(object):
             for p in self.players:
                 if p == player:
                     p.score += base * 3
-                    self.logger.info(f"Player {player.id} score +{3*base}, current score {player.score}")
+                    self.logger.info(f"Player {p.id} score +{3*base}, current score {p.score}")
                 else:
                     p.score -= base
-                    self.logger.info(f"Player {player.id} score -{base}, current score {player.score}")
+                    self.logger.info(f"Player {p.id} score -{base}, current score {p.score}")
             self.onCardServed(self.deck.pop(), player, afterGang=True)
         else: #Nothing
             if player.hule:

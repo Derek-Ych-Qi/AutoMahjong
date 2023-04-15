@@ -38,10 +38,9 @@ class Mahjong(object):
         else:
             return self.suit < other.suit
 
-    @staticmethod
-    def getUnicode(card_str):
+    def getUnicode(self):
         #https://en.wikipedia.org/wiki/Mahjong_Tiles_(Unicode_block)
-        pass
+        return chr(0x1F007 + self.__hash__())
 
 def _isPair(x:list) -> bool:
     if len(x) != 2:
@@ -128,7 +127,7 @@ def calcScore(revealed, hidden, zimo_fan):
     if len(revealed) == 0: #门清
         fan += 1
     if len(set([x.suit for x in hand])) == 1: #清一色
-        fan += 1
+        fan += 2
     if len(style) > 5: #七对
         fan += 1
     for ket in style: #杠

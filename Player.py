@@ -22,7 +22,7 @@ class Player(object):
     def claimShortSuit(self):
         NotImplemented
 
-    def draw(self, card):
+    def draw(self, card:Mahjong):
         if card is None:
             # nothing
             pass
@@ -33,52 +33,52 @@ class Player(object):
                 self.hidden.append(card)
         self.hidden = sorted(self.hidden)
     
-    def checkHand(self):
+    def checkHand(self) -> bool:
         return len(self.hidden) % 3 == 1
 
-    def hashHand(self):
+    def hashHand(self) -> tuple:
         revealed_tuple = tuple(tuple(k) for k in self.revealed)
         hidden_tuple = tuple(self.hidden)
         return revealed_tuple, hidden_tuple
 
-    def anyActionSelf(self):
+    def anyActionSelf(self) -> str:
         """
         player has just draw a card
         hu or gang or discard a card
         """
         NotImplemented
 
-    def anyActionOther(self, card, source_player):
+    def anyActionOther(self, card:Mahjong, source_player) -> str:
         """
         card is played by other player
         peng, gang or hu or do nothing
         """
         NotImplemented
 
-    def discard(self):
+    def discard(self) -> Mahjong:
         """
         player discard a card, return the played card
         """
         NotImplemented
 
-    def discardCard(self, card):
+    def discardCard(self, card:Mahjong) -> Mahjong:
         """
         discard by card instance, return played card
         """
         return self.discardCardStr(str(card))
 
-    def discardCardStr(self, card_str):
+    def discardCardStr(self, card_str) -> Mahjong:
         """
         discard by card name
         """
         i = [str(x) for x in self.hidden].index(card_str)
         return self.hidden.pop(i)
     
-    def canPeng(self, card):
+    def canPeng(self, card) -> bool:
         hidden_str = [str(x) for x in self.hidden]
         return hidden_str.count(str(card)) >= 2
 
-    def peng(self, card):
+    def peng(self, card) -> bool:
         i = [str(x) for x in self.hidden].index(str(card))
         j = [str(x) for x in self.hidden].index(str(card), i+1)
         card1 = self.hidden.pop(j)
@@ -174,7 +174,10 @@ class HumanPlayer(Player):
         return self.discardCardStr(card_str)
 
     def anyActionOther(self, card, source_player):
+        self.ting()
         if card.suit == self.shortSuit:
+            return "NOTHING"
+        elif not (self.canGang(card) | self.canPeng(card) | (str(card) in [x[0] for x in self.tingList])):
             return "NOTHING"
         print(self.revealed + self.hidden)
         action = input(f"{self.id} action on {source_player.id} playing {card}: [PENG/GANG/HU/NOTHING]:")
@@ -217,6 +220,12 @@ class DummyPlayer(Player):
             return "NOTHING"
     
     def discard(self):
+         #有缺打缺
+        for i in range(len(self.hidden)):
+            card = self.hidden[i]
+            if card.suit == self.shortSuit:
+                discard_index = i
+                return self.hidden.pop(discard_index)
         discard_index = np.random.randint(0, len(self.hidden)-1)
         for i in range(len(self.hidden)):
             card = self.hidden[i]
@@ -347,6 +356,8 @@ class SimpleAIPlayer(Player):
         cardCount = [self.hidden.count(card) for card in self.hidden]
         discardRange = [i for i in range(len(self.hidden)) if cardCount[i] < 2]
         diff_discard = [_suit_nums_diff_list[i] for i in discardRange]
+        if len(discardRange) == 0:
+            return self.hidden.pop(np.random.choice(range(len(self.hidden))))
         maxdiff = max(diff_discard)
         discard_index = discardRange[diff_discard.index(maxdiff)]
 
