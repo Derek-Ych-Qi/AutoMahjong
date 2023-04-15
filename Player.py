@@ -88,13 +88,17 @@ class Player(object):
     
     def canGang(self, card, fromHand=False):
         hidden_str = [str(x) for x in self.hidden]
-        if hidden_str.count(str(card)) >= 3:
-            return True
-        elif fromHand:
+        if fromHand:
+            #杠明刻
             for ket in self.revealed:
                 if str(ket[0]) == str(card):
                     return True
+            #暗杠
+            if hidden_str.count(str(card)) >= 4:
+                return True
             return False
+        elif hidden_str.count(str(card)) >= 3: #明杠暗刻
+            return True
         else:
             return False
 
@@ -103,6 +107,7 @@ class Player(object):
             for ket in self.revealed:
                 if str(ket[0]) == str(card):
                     ket.append(card) #明杠
+                    self.hidden.remove(card)
             return 1
         else:
             i = [str(x) for x in self.hidden].index(str(card))
@@ -111,8 +116,8 @@ class Player(object):
             card1 = self.hidden.pop(k)
             card2 = self.hidden.pop(j)
             card3 = self.hidden.pop(i)
-            self.revealed.append([card1, card2, card3, card]) #暗杠
-            return 2
+            self.revealed.append([card1, card2, card3, card])
+            return 2 if fromHand else 1
 
     def hu(self):
         score = calcScore( *self.hashHand(), zimo_fan=1)
@@ -164,11 +169,20 @@ class HumanPlayer(Player):
         return shortSuit
 
     def anyActionSelf(self):
-        print(self.revealed + self.hidden)
-        action = input(f"{self.id} action: [GANG/HU/NOTHING]:")
-        return action
+        if (self.hu() > 0) | any([self.canGang(card, fromHand=True) for card in self.hidden]):
+            print(self.revealed + self.hidden)
+            action = input(f"{self.id} action: [GANG/HU/NOTHING]:")
+            return action
+        else:
+            return "NOTHING"
     
     def discard(self):
+        #有缺打缺
+        for i in range(len(self.hidden)):
+            card = self.hidden[i]
+            if card.suit == self.shortSuit:
+                discard_index = i
+                return self.hidden.pop(discard_index)
         print(self.revealed + self.hidden)
         card_str = input(f"{self.id} play a card:")
         return self.discardCardStr(card_str)
@@ -220,12 +234,6 @@ class DummyPlayer(Player):
             return "NOTHING"
     
     def discard(self):
-         #有缺打缺
-        for i in range(len(self.hidden)):
-            card = self.hidden[i]
-            if card.suit == self.shortSuit:
-                discard_index = i
-                return self.hidden.pop(discard_index)
         discard_index = np.random.randint(0, len(self.hidden)-1)
         for i in range(len(self.hidden)):
             card = self.hidden[i]
