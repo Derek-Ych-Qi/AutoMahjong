@@ -1,6 +1,6 @@
 from Game import *
 from Mahjong import *
-from Player import *
+from PlayerImpl import *
 import logging
 logging.basicConfig(level="INFO")
 

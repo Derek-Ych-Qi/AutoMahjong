@@ -1,6 +1,5 @@
 import logging
 import datetime
-import itertools
 import pdb
 import numpy as np
 
@@ -193,7 +192,8 @@ class Game(object):
 
     def summary(self):
         for huEvent in self.huEvent:
-            print(f"cr:{huEvent['cr'].id}, de:{huEvent['de'].id}, score:{huEvent['score']}")
+            cr, de = huEvent['cr'], huEvent['de']
+            print(f"cr:{cr.id}, de:{de if type(de) == str else de.id}, score:{huEvent['score']}")
         for player in self.players:
             player.currentState()
 
