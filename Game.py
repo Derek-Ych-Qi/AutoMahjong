@@ -204,3 +204,9 @@ class Game(object):
             pInfo = p.getPublicInfo()
             info.update({p.id : pInfo})
         return info
+    
+    def displayPublicInfo(self):
+        info = self.getPublicInfo()
+        print(f"remaining deck: {info['remaining_deck']}")
+        for p in self.players:
+            p.displayPublicInfo()
