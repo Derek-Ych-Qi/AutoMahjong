@@ -135,6 +135,16 @@ class Player(object):
         self.ting()
         print(f"Ting list {self.tingList}")
 
+    def getPublicInfo(self):
+        info = {}
+        info['shortSuit'] = self.shortSuit
+        info['revealed'] = self.revealed
+        info['played'] = self.discardedList
+        info['hule'] = self.hule
+        info['huList'] = self.huList
+        return info
+
+
 ### Implementation
 
 class HumanPlayer(Player):
@@ -170,6 +180,7 @@ class HumanPlayer(Player):
 
     def anyActionSelf(self):
         if (self.hu() > 0) | any([self.canGang(card, fromHand=True) for card in self.hidden]):
+            print(self.game.getPublicInfo())
             print(self.revealed + self.hidden)
             action = input(f"{self.id} action: [GANG/HU/NOTHING]:")
             return action
@@ -183,6 +194,7 @@ class HumanPlayer(Player):
             if card.suit == self.shortSuit:
                 discard_index = i
                 return self.hidden.pop(discard_index)
+        print(self.game.getPublicInfo())
         print(self.revealed + self.hidden)
         card_str = input(f"{self.id} play a card:")
         return self.discardCardStr(card_str)
@@ -193,6 +205,7 @@ class HumanPlayer(Player):
             return "NOTHING"
         elif not (self.canGang(card) | self.canPeng(card) | (str(card) in [x[0] for x in self.tingList])):
             return "NOTHING"
+        print(self.game.getPublicInfo())
         print(self.revealed + self.hidden)
         action = input(f"{self.id} action on {source_player.id} playing {card}: [PENG/GANG/HU/NOTHING]:")
         return action

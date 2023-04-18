@@ -17,6 +17,7 @@ class Game(object):
         self.deck = [Mahjong(i) for i in range(TOTAL_CARDS)]
         np.random.shuffle(self.deck)
         self.gangEvent = []
+        self.huEvent = []
         self.logger = logging.getLogger(self.game_id)
         self.logger.info(f"Game {self.game_id} init completed, first player is {self.curr_player.id}")
 
@@ -40,6 +41,7 @@ class Game(object):
                 zimo_fan += 1
 
             score = calcScore( *player.hashHand(), zimo_fan)
+            self.huEvent.append({'cr':player, 'de':'all', 'score':score})
             self.logger.info(f"Player {player.id} HU card {card} self draw")
             for p in self.players:
                 if p == player:
@@ -51,7 +53,7 @@ class Game(object):
             player.hidden.remove(card)
             player.hule = True
             player.huList.append(card)
-        elif player_action == 'GANG' and player.canGang(card, fromHand=True):
+        elif player_action == 'GANG' and player.canGang(card, fromHand=True) and len(self.deck) > 0:
             base = player.gang(card, fromHand=True) #FIXME 杠手中其他牌
             self.logger.info(f"Player {player.id} GANG card {card} self draw")
             self.gangEvent.append({'cr':player, 'de':'all', 'base':base})
@@ -70,6 +72,7 @@ class Game(object):
                 self.onCardPlayed(player.discard(), player, afterGang)
 
     def onCardPlayed(self, card, source_player, afterGang=False):
+        source_player.discardedList.append(card)
         self.logger.info(f"Player {source_player.id} played card {card} afterGang={afterGang}")
         action_list_others = []
         for player in self.players:
@@ -87,6 +90,7 @@ class Game(object):
                         source_player = player1
                         gangFan += 1
                 score = calcScore( player.hashHand()[0], tuple(sorted(player.hidden+[card])), gangFan)
+                self.huEvent.append({'cr':player, 'de':source_player, 'score':score})
                 player.score += score
                 source_player.score -= score
                 self.logger.info(f"Player {player.id} score +{score}, current score {player.score}")
@@ -101,7 +105,7 @@ class Game(object):
                 self.curr_player = player
                 self.onCardPlayed(player.discard(), player, False)
                 break
-            elif action == "GANG" and player.canGang(card, fromHand=False):
+            elif action == "GANG" and player.canGang(card, fromHand=False) and len(self.deck) > 0:
                 self.logger.info(f"Player {player.id} GANG card {card} from player {source_player.id}")
                 base = player.gang(card, fromHand=False)
                 player.score += base
@@ -187,7 +191,16 @@ class Game(object):
                     self.logger.info(f"Player {ge['cr'].id} score -{base}, current score {ge['cr'].score}")
                     self.logger.info(f"Player {ge['de'].id} score -{base}, current score {ge['de'].score}")
 
-        
     def summary(self):
+        for huEvent in self.huEvent:
+            print(f"cr:{huEvent['cr'].id}, de:{huEvent['de'].id}, score:{huEvent['score']}")
         for player in self.players:
             player.currentState()
+
+    def getPublicInfo(self):
+        info = {}
+        info['remaining_deck'] = len(self.deck)
+        for p in self.players:
+            pInfo = p.getPublicInfo()
+            info.update({p.id : pInfo})
+        return info
