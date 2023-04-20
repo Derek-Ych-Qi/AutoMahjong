@@ -27,6 +27,21 @@ class Game(object):
     def getPlayerLists(self):
         return self.players
 
+    def processEvent(self, event):
+        if event['de'] == 'all':
+            for p in self.players:
+                if p == event['cr']:
+                    p.score += event['score'] * 3
+                    self.logger.info(f"Player {p.id} score {event['score']*3}, current score {p.score}")
+                else:
+                    p.score -= event['score']
+                    self.logger.info(f"Player {p.id} score {-1*event['score']}, current score {p.score}")
+        else:
+            event['cr'].score += event['score']
+            event['de'].score -= event['score']
+            self.logger.info(f"Player {event['cr'].id} score {event['score']}, current score {event['cr'].score}")
+            self.logger.info(f"Player {event['de'].id} score {-1*event['score']}, current score {event['de'].score}")
+
     def onCardServed(self, card, player, afterGang=False):
         self.logger.info(f"Player {player.id} draw card {card} afterGang={afterGang} remaining deck={len(self.deck)}")
         player.draw(card)
@@ -42,27 +57,15 @@ class Game(object):
             score = calcScore( *player.hashHand(), zimo_fan)
             self.huEvent.append({'cr':player, 'de':'all', 'score':score})
             self.logger.info(f"Player {player.id} HU card {card} self draw")
-            for p in self.players:
-                if p == player:
-                    p.score += score * 3
-                    self.logger.info(f"Player {p.id} score +{score*3}, current score {p.score}")
-                else:
-                    p.score -= score
-                    self.logger.info(f"Player {p.id} score -{score}, current score {p.score}")
+            self.processEvent(self.huEvent[-1])
             player.hidden.remove(card)
             player.hule = True
             player.huList.append(card)
         elif player_action == 'GANG' and player.canGang(card, fromHand=True) and len(self.deck) > 0:
             base = player.gang(card, fromHand=True) #FIXME 杠手中其他牌
             self.logger.info(f"Player {player.id} GANG card {card} self draw")
-            self.gangEvent.append({'cr':player, 'de':'all', 'base':base})
-            for p in self.players:
-                if p == player:
-                    p.score += base * 3
-                    self.logger.info(f"Player {p.id} score +{3*base}, current score {p.score}")
-                else:
-                    p.score -= base
-                    self.logger.info(f"Player {p.id} score -{base}, current score {p.score}")
+            self.gangEvent.append({'cr':player, 'de':'all', 'score':base})
+            self.processEvent(self.gangEvent[-1])
             self.onCardServed(self.deck.pop(), player, afterGang=True)
         else: #Nothing
             if player.hule:
@@ -90,10 +93,7 @@ class Game(object):
                         gangFan += 1
                 score = calcScore( player.hashHand()[0], tuple(sorted(player.hidden+[card])), gangFan)
                 self.huEvent.append({'cr':player, 'de':source_player, 'score':score})
-                player.score += score
-                source_player.score -= score
-                self.logger.info(f"Player {player.id} score +{score}, current score {player.score}")
-                self.logger.info(f"Player {source_player.id} score -{score}, current score {source_player.score}")
+                self.processEvent(self.huEvent[-1])
                 player.hule = True
                 player.huList.append(card)
                 self.curr_player = player
@@ -107,11 +107,8 @@ class Game(object):
             elif action == "GANG" and player.canGang(card, fromHand=False) and len(self.deck) > 0:
                 self.logger.info(f"Player {player.id} GANG card {card} from player {source_player.id}")
                 base = player.gang(card, fromHand=False)
-                player.score += base
-                source_player.score -= base
-                self.logger.info(f"Player {player.id} score +{base}, current score {player.score}")
-                self.logger.info(f"Player {source_player.id} score -{base}, current score {source_player.score}")
-                self.gangEvent.append({'cr':player, 'de':source_player, 'base':base})
+                self.gangEvent.append({'cr':player, 'de':source_player, 'score':base})
+                self.processEvent(self.gangEvent[-1])
                 self.curr_player = player
                 self.onCardServed(self.deck.pop(), player, afterGang=True)
                 break
@@ -155,40 +152,22 @@ class Game(object):
             suits = set([card.suit for card in player.hidden])
             if len(suits) == 3:
                 self.logger.info(f"Player {player.id} has short suit remaining by end game")
-                for p in self.players:
-                    if p == player:
-                        p.score -= 2 ** MAX_FAN * 3
-                        self.logger.info(f"Player {player.id} score -{2 ** MAX_FAN * 3}, current score {player.score}")
-                    else:
-                        p.score += 2 ** MAX_FAN
-                        self.logger.info(f"Player {player.id} score +{2 ** MAX_FAN}, current score {player.score}")
+                eventHuaZhu = {'cr':player, 'de':'all', 'score':-2**MAX_FAN}
+                self.processEvent(eventHuaZhu)
         players_meihu = [p for p in self.players if not p.hule]
         players_tingle = [p for p in players_meihu if len(p.tingList) > 0]
         players_meiting = [p for p in players_meihu if len(p.tingList) == 0]
         for p_t in players_tingle:
             score = max([score for (card, score) in p_t.tingList])
             for p_mt in players_meiting:
-                p_mt.score -= score
-                p_t.score += score
-                self.logger.info(f"Player {p_mt.id} score -{score}, current score {p_mt.score}")
-                self.logger.info(f"Player {p_t.id} score +{score}, current score {p_t.score}")
+                eventDaJiao = {'cr':p_t, 'de':p_mt, 'score':score}
+                self.processEvent(eventDaJiao)
         self.logger.info("Gang Tax Refund")
         for ge in self.gangEvent:
-            base = ge['base']
+            base = ge['score']
             if ge['cr'] in players_meiting:
-                if ge['de'] == 'all':
-                    for p in self.players:
-                        if p == ge['cr']:
-                            p.score -= base*3
-                            self.logger.info(f"Player {p.id} score -{3*base}, current score {p.score}")
-                        else:
-                            p.score += base
-                            self.logger.info(f"Player {p.id} score +{base}, current score {p.score}")
-                else:
-                    ge['cr'].score -= base
-                    ge['de'].score += base
-                    self.logger.info(f"Player {ge['cr'].id} score -{base}, current score {ge['cr'].score}")
-                    self.logger.info(f"Player {ge['de'].id} score -{base}, current score {ge['de'].score}")
+                reverse_ge = {'cr':ge['cr'], 'de':ge['de'], 'score':-1*ge['score']}
+                self.processEvent(reverse_ge)
 
     def summary(self):
         for huEvent in self.huEvent:

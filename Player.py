@@ -90,8 +90,8 @@ class Player(object):
         hidden_str = [str(x) for x in self.hidden]
         if fromHand:
             #杠明刻
-            for ket in self.revealed:
-                if str(ket[0]) == str(card):
+            for ke in self.revealed:
+                if str(ke[0]) == str(card):
                     return True
             #暗杠
             if hidden_str.count(str(card)) >= 4:
@@ -104,9 +104,9 @@ class Player(object):
 
     def gang(self, card, fromHand=False):
         if fromHand:
-            for ket in self.revealed:
-                if str(ket[0]) == str(card):
-                    ket.append(card) #明杠
+            for ke in self.revealed:
+                if str(ke[0]) == str(card):
+                    ke.append(card) #明杠
                     self.hidden.remove(card)
             return 1
         else:
