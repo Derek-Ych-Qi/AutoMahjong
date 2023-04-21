@@ -65,6 +65,8 @@ def _isSet(x:list) -> bool:
         else:
             return False
 
+cardsToStr = lambda cards : [str(c) for c in cards]
+
 def allPairs(revealed, hidden):
     #utilize the sorted feature
     if _isPair(hidden):

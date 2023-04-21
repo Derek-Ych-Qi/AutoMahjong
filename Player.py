@@ -71,23 +71,23 @@ class Player(object):
         """
         discard by card name
         """
-        i = [str(x) for x in self.hidden].index(card_str)
+        i = cardsToStr(self.hidden).index(card_str)
         return self.hidden.pop(i)
     
     def canPeng(self, card) -> bool:
-        hidden_str = [str(x) for x in self.hidden]
+        hidden_str = cardsToStr(self.hidden)
         return hidden_str.count(str(card)) >= 2
 
     def peng(self, card) -> bool:
-        i = [str(x) for x in self.hidden].index(str(card))
-        j = [str(x) for x in self.hidden].index(str(card), i+1)
+        i = cardsToStr(self.hidden).index(str(card))
+        j = cardsToStr(self.hidden).index(str(card), i+1)
         card1 = self.hidden.pop(j)
         card2 = self.hidden.pop(i)
         self.revealed.append([card1, card2, card])
         return True
     
     def canGang(self, card, fromHand=False):
-        hidden_str = [str(x) for x in self.hidden]
+        hidden_str = cardsToStr(self.hidden)
         if fromHand:
             #杠明刻
             for ke in self.revealed:
@@ -109,15 +109,22 @@ class Player(object):
                     ke.append(card) #明杠
                     self.hidden.remove(card)
             return 1
+            if hidden_str.count(str(card)) >= 4:
+                i = cardsToStr(self.hidden).index(str(card))
+                j = cardsToStr(self.hidden).index(str(card), i+1)
+                k = cardsToStr(self.hidden).index(str(card), j+1)
+                l = cardsToStr(self.hidden).index(str(card), k+1)
+                self.revealed.append([self.hidden.pop(l), self.hidden.pop(k), self.hidden.pop(j), self.hidden.pop(i)])
+                return 2
         else:
-            i = [str(x) for x in self.hidden].index(str(card))
-            j = [str(x) for x in self.hidden].index(str(card), i+1)
-            k = [str(x) for x in self.hidden].index(str(card), j+1)
+            i = cardsToStr(self.hidden).index(str(card))
+            j = cardsToStr(self.hidden).index(str(card), i+1)
+            k = cardsToStr(self.hidden).index(str(card), j+1)
             card1 = self.hidden.pop(k)
             card2 = self.hidden.pop(j)
             card3 = self.hidden.pop(i)
             self.revealed.append([card1, card2, card3, card])
-            return 2 if fromHand else 1
+            return 1
 
     def hu(self):
         score = calcScore( *self.hashHand(), zimo_fan=1)
