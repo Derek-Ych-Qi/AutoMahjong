@@ -42,19 +42,22 @@ class Mahjong(object):
         #https://en.wikipedia.org/wiki/Mahjong_Tiles_(Unicode_block)
         return chr(0x1F007 + self.__hash__())
 
-def _isPair(x:list) -> bool:
+@lru_cache
+def _isPair(x:tuple) -> bool:
     if len(x) != 2:
         return False
     else:
         return x[0] == x[1]
 
-def _isKeorGang(x:list) -> bool:
+@lru_cache
+def _isKeorGang(x:tuple) -> bool:
     if len(x) < 3:
         return False
     else:
         return all([i == x[0] for i in x])
 
-def _isSet(x:list) -> bool:
+@lru_cache
+def _isSet(x:tuple) -> bool:
     if len(x) != 3:
         return False
     else:
@@ -67,39 +70,44 @@ def _isSet(x:list) -> bool:
 
 cardsToStr = lambda cards : [str(c) for c in cards]
 
-def allPairs(revealed, hidden):
+@lru_cache
+def allPairs(revealed:tuple, hidden:tuple) -> tuple:
     #utilize the sorted feature
     if _isPair(hidden):
-        revealed.append(hidden)
-        return (True, revealed)
+        res = list(revealed)
+        res.append(hidden)
+        return (True, res)
     elif _isPair(hidden[0:2]):
-        new_revealed, new_hidden = revealed.copy(), hidden.copy()
-        new_revealed.append([new_hidden.pop(1), new_hidden.pop(0)])
-        return allPairs(new_revealed, new_hidden)
+        new_revealed, new_hidden = list(revealed), list(hidden)
+        new_revealed.append( (new_hidden.pop(1), new_hidden.pop(0)) )
+        #print(tuple(new_revealed), tuple(new_hidden))
+        return allPairs(tuple(new_revealed), tuple(new_hidden))
     else:
-        return (False, [])
+        return False, []
 
-def huHelper(revealed, hidden):
+@lru_cache
+def huHelper(revealed:tuple, hidden:tuple) -> tuple:
     #print(revealed, hidden)
     if _isPair(hidden):
-        new_revealed = revealed.copy()
-        new_revealed.append(hidden)
-        return (True, new_revealed)
+        res = list(revealed)
+        res.append(hidden)
+        return (True, res)
     elif len(hidden) < 2:
         return (False, [])
     else:
         for i in range(0, len(hidden)-2):
             for j in range(i+1, len(hidden)-1):
                 for k in range(j+1, len(hidden)):
-                    if _isSet([hidden[i], hidden[j], hidden[k]]):
-                        new_revealed, new_hidden = revealed.copy(), hidden.copy()
-                        new_revealed.append([new_hidden.pop(k), new_hidden.pop(j), new_hidden.pop(i)])
-                        hu, style = huHelper(new_revealed, new_hidden)
+                    if _isSet((hidden[i], hidden[j], hidden[k])):
+                        new_revealed, new_hidden = list(revealed), list(hidden)
+                        new_revealed.append((new_hidden.pop(k), new_hidden.pop(j), new_hidden.pop(i)))
+                        hu, style = huHelper(tuple(new_revealed), tuple(new_hidden))
                         if hu:
                             return hu, style
-        return (False, [])
+        return False, []
 
-def hulema(revealed, hidden):
+@lru_cache
+def hulema(revealed:tuple, hidden:tuple) -> tuple:
     hu, style = False, []
     if len(revealed) == 0:
         hu, style = allPairs(revealed, hidden)
@@ -109,17 +117,15 @@ def hulema(revealed, hidden):
     return hu, style
 
 @lru_cache
-def calcScore(revealed, hidden, zimo_fan):
-    revealed = list(revealed)
-    hidden = list(hidden)
+def calcScore(revealed:tuple, hidden:tuple, zimo_fan:int) -> int:
     hu, style = hulema(revealed, hidden)
     if not hu:
         return 0
     fan = zimo_fan #点炮=0, 自摸=1, 杠开/海底捞月=2, 杠开且海底捞月=3
-    hand = [card for ket in revealed for card in ket] + hidden
+    hand = [card for ke in revealed for card in ke] + list(hidden)
     if len(hidden) == 2: #金钩钓
         fan += 1
-    if all([_isKeorGang(ket) for ket in style if len(ket) > 2]): #碰碰胡
+    if all([_isKeorGang(ke) for ke in style if len(ke) > 2]): #碰碰胡
         fan += 1
     if (min([x.num for x in hand]) > 1) and (max([x.num for x in hand]) < 9): #断幺九
         fan += 1
@@ -140,7 +146,7 @@ def calcScore(revealed, hidden, zimo_fan):
     return 2 ** fan
 
 @lru_cache
-def tingpai(revealed, hidden):
+def tingpai(revealed:tuple, hidden:tuple) -> list:
     if len(hidden) == 1:
         return [[hidden[0].__str__(), calcScore(revealed, (hidden[0], hidden[0]), 0)]]
     else:
