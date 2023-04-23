@@ -7,7 +7,7 @@ from Mahjong import *
 from Player import *
 
 class Game(object):
-    def __init__(self, players):
+    def __init__(self, players, verbose=False):
         self.players = players
         for player in players:
             player.game = self
@@ -19,6 +19,7 @@ class Game(object):
         self.huEvent = []
         self.logger = logging.getLogger(self.game_id)
         self.logger.info(f"Game {self.game_id} init completed, first player is {self.curr_player.id}")
+        self.verbose = verbose
 
     def getNextPlayer(self, player):
         i = self.players.index(player)
@@ -54,14 +55,19 @@ class Game(object):
             if afterGang: #杠上开花
                 zimo_fan += 1
 
-            score = calcScore( *player.hashHand(), zimo_fan)
+            if card is None or len(player.discardedList) == 0:
+                # 天地胡
+                score = 2 ** MAX_FAN
+            else:
+                score = calcScore( *player.hashHand(), zimo_fan)
             self.huEvent.append({'cr':player, 'de':'all', 'score':score})
             self.logger.info(f"Player {player.id} HU card {card} self draw")
             self.processEvent(self.huEvent[-1])
-            player.hidden.remove(card)
             player.hule = True
+            if card:
+                player.hidden.remove(card)
             player.huList.append(card)
-        elif player_action == 'GANG' and player.canGang(card, fromHand=True) and len(self.deck) > 0:
+        elif player_action == 'GANG' and player.canGang(card, fromHand=True) and len(self.deck) > 0: #FIXME 胡了可以杠但是不可改变听的牌
             base = player.gang(card, fromHand=True) #FIXME 杠手中其他牌
             self.logger.info(f"Player {player.id} GANG card {card} self draw")
             self.gangEvent.append({'cr':player, 'de':'all', 'score':base})
@@ -142,7 +148,8 @@ class Game(object):
             self.onCardServed(self.deck.pop(0), self.curr_player, afterGang=False)
         #end game
         self.end()
-        self.summary()
+        if self.verbose:
+            self.summary()
     
     def end(self):
         self.logger.info("### End Game ###")

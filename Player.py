@@ -17,10 +17,10 @@ class Player(object):
         self.logger = logging.getLogger(self.id)
     
     def passThreeCards(self):
-        NotImplemented
+        raise NotImplementedError
 
     def claimShortSuit(self):
-        NotImplemented
+        raise NotImplementedError
 
     def draw(self, card:Mahjong):
         if card is None:
@@ -46,20 +46,20 @@ class Player(object):
         player has just draw a card
         hu or gang or discard a card
         """
-        NotImplemented
+        raise NotImplementedError
 
     def anyActionOther(self, card:Mahjong, source_player) -> str:
         """
         card is played by other player
         peng, gang or hu or do nothing
         """
-        NotImplemented
+        raise NotImplementedError
 
     def discard(self) -> Mahjong:
         """
         player discard a card, return the played card
         """
-        NotImplemented
+        raise NotImplementedError
 
     def discardCard(self, card:Mahjong) -> Mahjong:
         """
@@ -108,8 +108,8 @@ class Player(object):
                 if str(ke[0]) == str(card):
                     ke.append(card) #明杠
                     self.hidden.remove(card)
-            return 1
-            if hidden_str.count(str(card)) >= 4:
+                return 1
+            if cardsToStr(self.hidden).count(str(card)) >= 4:
                 i = cardsToStr(self.hidden).index(str(card))
                 j = cardsToStr(self.hidden).index(str(card), i+1)
                 k = cardsToStr(self.hidden).index(str(card), j+1)
@@ -120,10 +120,7 @@ class Player(object):
             i = cardsToStr(self.hidden).index(str(card))
             j = cardsToStr(self.hidden).index(str(card), i+1)
             k = cardsToStr(self.hidden).index(str(card), j+1)
-            card1 = self.hidden.pop(k)
-            card2 = self.hidden.pop(j)
-            card3 = self.hidden.pop(i)
-            self.revealed.append([card1, card2, card3, card])
+            self.revealed.append([self.hidden.pop(k), self.hidden.pop(j), self.hidden.pop(i), card])
             return 1
 
     def hu(self):
