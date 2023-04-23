@@ -11,7 +11,7 @@ import numpy as np
 scores = []
 
 def main():
-    for i in range(20):
+    for i in range(50):
         print(f"Game {i+1}")
         east, south, west, north = CheatingPlayer(900), SimpleAIPlayer(101), SimpleAIPlayer(102), SimpleAIPlayer(103)
         game = Game(players=[east, south, west, north], verbose=False)

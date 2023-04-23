@@ -60,6 +60,8 @@ def _isKeorGang(x:tuple) -> bool:
 def _isSet(x:tuple) -> bool:
     if len(x) != 3:
         return False
+    elif x[0].suit != x[1].suit or x[0].suit != x[2].suit or x[2].num - x[0].num >= 3:
+        return False
     else:
         if x[0] == x[1] and x[0] == x[2]:
             return True
@@ -95,9 +97,10 @@ def huHelper(revealed:tuple, hidden:tuple) -> tuple:
     elif len(hidden) < 2:
         return (False, [])
     else:
+        #FIXME this is the source of slowness
         for i in range(0, len(hidden)-2):
-            for j in range(i+1, len(hidden)-1):
-                for k in range(j+1, len(hidden)):
+            for j in range(i+1, min(i+7, len(hidden)-1)):
+                for k in range(j+1, min(i+8, len(hidden))):
                     if _isSet((hidden[i], hidden[j], hidden[k])):
                         new_revealed, new_hidden = list(revealed), list(hidden)
                         new_revealed.append((new_hidden.pop(k), new_hidden.pop(j), new_hidden.pop(i)))
