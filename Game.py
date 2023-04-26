@@ -20,6 +20,7 @@ class Game(object):
         self.logger = logging.getLogger(self.game_id)
         self.logger.info(f"Game {self.game_id} init completed, first player is {self.curr_player.id}")
         self.verbose = verbose
+        self.observer = None
 
     def getNextPlayer(self, player):
         i = self.players.index(player)
@@ -29,22 +30,23 @@ class Game(object):
         return self.players
 
     def processEvent(self, event):
-        if event['de'] == 'all':
+        if event['source'] == 'all':
             for p in self.players:
-                if p == event['cr']:
+                if p == event['player']:
                     p.score += event['score'] * 3
                     self.logger.info(f"Player {p.id} score {event['score']*3}, current score {p.score}")
                 else:
                     p.score -= event['score']
                     self.logger.info(f"Player {p.id} score {-1*event['score']}, current score {p.score}")
         else:
-            event['cr'].score += event['score']
-            event['de'].score -= event['score']
-            self.logger.info(f"Player {event['cr'].id} score {event['score']}, current score {event['cr'].score}")
-            self.logger.info(f"Player {event['de'].id} score {-1*event['score']}, current score {event['de'].score}")
+            event['player'].score += event['score']
+            event['source'].score -= event['score']
+            self.logger.info(f"Player {event['player'].id} score {event['score']}, current score {event['player'].score}")
+            self.logger.info(f"Player {event['source'].id} score {-1*event['score']}, current score {event['source'].score}")
 
     def onCardServed(self, card, player, afterGang=False):
         self.logger.info(f"Player {player.id} draw card {card} afterGang={afterGang} remaining deck={len(self.deck)}")
+        gameEvent = {'type':'draw', 'player':player, 'card':card, 'afterGang':afterGang}
         player.draw(card)
         player_action = player.anyActionSelf()
         if player_action == 'HU':
@@ -60,7 +62,8 @@ class Game(object):
                 score = 2 ** MAX_FAN
             else:
                 score = calcScore( *player.hashHand(), zimo_fan)
-            self.huEvent.append({'cr':player, 'de':'all', 'score':score})
+            gameEvent = {'type':'HU', 'player':player, 'card':card, 'source':'all', 'score':score}
+            self.huEvent.append(gameEvent)
             self.logger.info(f"Player {player.id} HU card {card} self draw")
             self.processEvent(self.huEvent[-1])
             player.hule = True
@@ -70,7 +73,8 @@ class Game(object):
         elif player_action == 'GANG' and player.canGang(card, fromHand=True) and len(self.deck) > 0: #FIXME 胡了可以杠但是不可改变听的牌
             base = player.gang(card, fromHand=True) #FIXME 杠手中其他牌
             self.logger.info(f"Player {player.id} GANG card {card} self draw")
-            self.gangEvent.append({'cr':player, 'de':'all', 'score':base})
+            gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':'all', 'score':base}
+            self.gangEvent.append(gameEvent)
             self.processEvent(self.gangEvent[-1])
             self.onCardServed(self.deck.pop(), player, afterGang=True)
         else: #Nothing
@@ -82,6 +86,7 @@ class Game(object):
     def onCardPlayed(self, card, source_player, afterGang=False):
         source_player.discardedList.append(card)
         self.logger.info(f"Player {source_player.id} played card {card} afterGang={afterGang}")
+        gameEvent = {'type':'play', 'player':source_player, 'card':card, 'afterGang':afterGang}
         action_list_others = []
         for player in self.players:
             if player == source_player:
@@ -98,7 +103,8 @@ class Game(object):
                         source_player = player1
                         gangFan += 1
                 score = calcScore( player.hashHand()[0], tuple(sorted(player.hidden+[card])), gangFan)
-                self.huEvent.append({'cr':player, 'de':source_player, 'score':score})
+                gameEvent = {'type':'HU', 'player':player, 'card':card, 'source':source_player, 'score':score}
+                self.huEvent.append(gameEvent)
                 self.processEvent(self.huEvent[-1])
                 player.hule = True
                 player.huList.append(card)
@@ -106,6 +112,7 @@ class Game(object):
                 break
             elif action == "PENG" and player.canPeng(card) and not player.hule:
                 self.logger.info(f"Player {player.id} PENG card {card} from player {source_player.id}")
+                gameEvent = {'type':'peng', 'player':player, 'card':card, 'source':source_player}
                 player.peng(card)
                 self.curr_player = player
                 self.onCardPlayed(player.discard(), player, False)
@@ -113,7 +120,8 @@ class Game(object):
             elif action == "GANG" and player.canGang(card, fromHand=False) and len(self.deck) > 0:
                 self.logger.info(f"Player {player.id} GANG card {card} from player {source_player.id}")
                 base = player.gang(card, fromHand=False)
-                self.gangEvent.append({'cr':player, 'de':source_player, 'score':base})
+                gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':source_player, 'score':base}
+                self.gangEvent.append(gameEvent)
                 self.processEvent(self.gangEvent[-1])
                 self.curr_player = player
                 self.onCardServed(self.deck.pop(), player, afterGang=True)
@@ -159,7 +167,7 @@ class Game(object):
             suits = set([card.suit for card in player.hidden])
             if len(suits) == 3:
                 self.logger.info(f"Player {player.id} has short suit remaining by end game")
-                eventHuaZhu = {'cr':player, 'de':'all', 'score':-2**MAX_FAN}
+                eventHuaZhu = {'player':player, 'source':'all', 'score':-2**MAX_FAN}
                 self.processEvent(eventHuaZhu)
         players_meihu = [p for p in self.players if not p.hule]
         players_tingle = [p for p in players_meihu if len(p.tingList) > 0]
@@ -167,19 +175,19 @@ class Game(object):
         for p_t in players_tingle:
             score = max([score for (card, score) in p_t.tingList])
             for p_mt in players_meiting:
-                eventDaJiao = {'cr':p_t, 'de':p_mt, 'score':score}
+                eventDaJiao = {'player':p_t, 'source':p_mt, 'score':score}
                 self.processEvent(eventDaJiao)
         self.logger.info("Gang Tax Refund")
         for ge in self.gangEvent:
             base = ge['score']
-            if ge['cr'] in players_meiting:
-                reverse_ge = {'cr':ge['cr'], 'de':ge['de'], 'score':-1*ge['score']}
+            if ge['player'] in players_meiting:
+                reverse_ge = {'player':ge['player'], 'source':ge['source'], 'score':-1*ge['score']}
                 self.processEvent(reverse_ge)
 
     def summary(self):
         for huEvent in self.huEvent:
-            cr, de = huEvent['cr'], huEvent['de']
-            print(f"cr:{cr.id}, de:{de if type(de) == str else de.id}, score:{huEvent['score']}")
+            p, s = huEvent['player'], huEvent['source']
+            print(f"player:{p.id}, source:{s if type(s) == str else s.id}, score:{huEvent['score']}")
         for player in self.players:
             player.currentState()
 
@@ -196,3 +204,9 @@ class Game(object):
         print(f"remaining deck: {info['remaining_deck']}")
         for p in self.players:
             p.displayPublicInfo()
+
+class Observer(object):
+    def __init__(self):
+        pass
+
+    

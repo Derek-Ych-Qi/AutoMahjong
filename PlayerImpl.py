@@ -249,6 +249,9 @@ class SimpleAIPlayer(Player):
         return self.hidden.pop(discard_index)
 
     def anyActionOther(self, card, source_player):
+        if self.oneSuit and card.suit != self.oneSuit:
+            return "NOTHING"
+
         revealed_tuple, hidden_tuple = self.hashHand()
         if calcScore( revealed_tuple, tuple(self.hidden + [card]), 0) > 0:
             return "HU"
@@ -376,7 +379,7 @@ class CheatingPlayer(Player):
             tinglist = tingpai( revealed_tuple, tuple(fake_hidden))
             tingscore = 0
             for ting in tinglist:
-                tingscore += ting[1] * (sum([self._remainingInHand(p, ting[0]) for p in self.game.players if p != self]) + self._remainingInDeck(ting[0])*1.25) #别人手里1倍，牌堆25%自摸翻倍
+                tingscore += ting[1] * (sum([self._remainingInHand(p, ting[0]) for p in self.game.players if (p != self and not p.hule)]) + self._remainingInDeck(ting[0])*1.25) #别人手里1倍，牌堆25%自摸翻倍
             tingscore_list.append(tingscore)
         
         if len(tingscore_list) > 0 and max(tingscore_list) > 0 and (len(self.game.deck) < 16 or self._dianPao(str(self.hidden[i])) < tingscore * 0.8): #听牌分数超过自己点炮分数的80%
@@ -410,6 +413,10 @@ class CheatingPlayer(Player):
         return self.hidden.pop(discard_index)
 
     def anyActionOther(self, card, source_player):
+        if self.oneSuit and card.suit != self.oneSuit:
+            return "NOTHING"
+
+
         revealed_tuple, hidden_tuple = self.hashHand()
         if calcScore( revealed_tuple, tuple(self.hidden + [card]), 0) > 0:
             return "HU"

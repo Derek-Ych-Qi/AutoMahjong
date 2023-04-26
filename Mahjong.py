@@ -120,11 +120,11 @@ def hulema(revealed:tuple, hidden:tuple) -> tuple:
     return hu, style
 
 @lru_cache
-def calcScore(revealed:tuple, hidden:tuple, zimo_fan:int) -> int:
+def styleScore(revealed:tuple, hidden:tuple) -> int:
     hu, style = hulema(revealed, hidden)
     if not hu:
         return 0
-    fan = zimo_fan #点炮=0, 自摸=1, 杠开/海底捞月=2, 杠开且海底捞月=3
+    fan = 0
     hand = [card for ke in revealed for card in ke] + list(hidden)
     if len(hidden) == 2: #金钩钓
         fan += 1
@@ -145,8 +145,12 @@ def calcScore(revealed:tuple, hidden:tuple, zimo_fan:int) -> int:
     for num in card_num.values():
         if num == 4:
             fan += 1 #根或杠
-
     return 2 ** fan
+
+def calcScore(revealed:tuple, hidden:tuple, zimo_fan:int) -> int:
+    style_score = styleScore(revealed, hidden)
+    #点炮=0, 自摸=1, 杠开/海底捞月=2, 杠开且海底捞月=3
+    return 2 ** zimo_fan * style_score
 
 @lru_cache
 def tingpai(revealed:tuple, hidden:tuple) -> list:

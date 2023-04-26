@@ -3,7 +3,7 @@ from Mahjong import *
 from PlayerImpl import *
 import logging
 import pandas as pd
-logging.basicConfig(level="WARNING")
+logging.basicConfig(level="INFO", filename='./gamelog/simgame.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
 import numpy as np
 #np.random.seed(53)
