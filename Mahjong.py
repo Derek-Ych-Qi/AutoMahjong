@@ -16,7 +16,7 @@ class Mahjong(object):
         elif type(id) == str:
             self.id = int(id[0])-1 + ALL_SUITS.index(id[1]) * 9
         else:
-            TypeError
+            raise TypeError(f"invalid type {type(id)}")
         self.suit, self.num = DECK[self.id]
         self.unicode_str = ''
 

@@ -168,6 +168,9 @@ class Game(object):
             dest_index = (self.players.index(player) + passing_index) % 4 # 1: next player, 2: player across, 3: previous player
             dest_player = self.players[dest_index]
             dest_player.draw(passing_cards[player])
+            if self.observer:
+                for card in passing_cards[player]:
+                    self.observer.processEvent({'type':'pass', 'player':dest_player, 'card':card, 'source':player})
 
         #claim short suit
         for p in self.players:
@@ -192,22 +195,28 @@ class Game(object):
             suits = set([card.suit for card in player.hidden])
             if len(suits) == 3:
                 self.logger.info(f"Player {player.id} has short suit remaining by end game")
-                eventHuaZhu = {'player':player, 'source':'all', 'score':-2**MAX_FAN}
+                eventHuaZhu = {'type':'huazhu', 'player':player, 'source':'all', 'score':-2**MAX_FAN}
                 self.processEvent(eventHuaZhu)
+                if self.observer:
+                    self.observer.processEvent(eventHuaZhu)
         players_meihu = [p for p in self.players if not p.hule]
         players_tingle = [p for p in players_meihu if len(p.tingList) > 0]
         players_meiting = [p for p in players_meihu if len(p.tingList) == 0]
         for p_t in players_tingle:
             score = max([score for (card, score) in p_t.tingList])
             for p_mt in players_meiting:
-                eventDaJiao = {'player':p_t, 'source':p_mt, 'score':score}
+                eventDaJiao = {'type':'dajiao', 'player':p_t, 'source':p_mt, 'score':score}
                 self.processEvent(eventDaJiao)
+                if self.observer:
+                    self.observer.processEvent(eventDaJiao)
         self.logger.info("Gang Tax Refund")
         for ge in self.gangEvent:
             base = ge['score']
             if ge['player'] in players_meiting:
-                reverse_ge = {'player':ge['player'], 'source':ge['source'], 'score':-1*ge['score']}
+                reverse_ge = {'type':'rev_gang', 'player':ge['player'], 'source':ge['source'], 'score':-1*ge['score']}
                 self.processEvent(reverse_ge)
+                if self.observer:
+                    self.observer.processEvent(reverse_ge)
 
     def summary(self):
         for huEvent in self.huEvent:
@@ -250,6 +259,66 @@ class Observer(object):
                 event['source'] = event['source'].direction
         event_df = pd.DataFrame(self.all_events)
         event_df.to_csv(os.path.join(self.logDir, f'event_{self.id}.csv'), index=False)
+
+class GameLogReader(object):
+    def __init__(self, filepath):
+        self.data = pd.read_csv(filepath)
+        self.players = [Player('E'), Player('S'), Player('W'), Player('N')]
+        self.playersMap = dict(zip(['E', 'S', 'W', 'N'], self.players))
+    
+    def processLogEvent(self, event):
+        if event['type'] == 'draw':
+            if not pd.isnull(event['card']):
+                self.playersMap.get(event['player']).draw( Mahjong(event['card']) )
+        elif event['type'] == 'play':
+            self.playersMap.get(event['player']).discardCardStr(event['card'])
+        elif event['type'] == 'pass':
+            self.playersMap.get(event['source']).discardCardStr(event['card'])
+            self.playersMap.get(event['player']).draw( Mahjong(event['card']) )
+        elif event['type'] == 'peng':
+            self.playersMap.get(event['player']).peng(Mahjong(event['card']))
+        elif event['type'] == 'gang':
+            self.playersMap.get(event['player']).gang(Mahjong(event['card']))
+            if event['source'] == 'all':
+                for p in self.players:
+                    if p != self.playersMap.get(event['player']):
+                        p.score -= event['score']
+                    else:
+                        p.score += event['score'] * 3
+            else:
+                self.playersMap.get(event['source']).score -= event['score']
+                self.playersMap.get(event['player']).score += event['score']
+        elif event['type'] == 'hu':
+            self.playersMap.get(event['player']).hule = True
+            if event['source'] == 'all':
+                for p in self.players:
+                    if p != self.playersMap.get(event['player']):
+                        p.score -= event['score']
+                    else:
+                        p.score += event['score'] * 3
+                self.playersMap.get(event['player']).discardCardStr(event['card'])
+                self.playersMap.get(event['player']).huList.append(Mahjong(event['card']))
+            else:
+                self.playersMap.get(event['source']).score -= event['score']
+                self.playersMap.get(event['player']).score += event['score']
+                self.playersMap.get(event['player']).huList.append(Mahjong(event['card']))
+        elif event['type'] == 'huazhu' or event['type'] == 'dajiao' or event['type'] == 'rev_gang':
+            if event['source'] == 'all':
+                for p in self.players:
+                    if p != self.playersMap.get(event['player']):
+                        p.score -= event['score']
+                    else:
+                        p.score += event['score'] * 3
+            else:
+                self.playersMap.get(event['source']).score -= event['score']
+                self.playersMap.get(event['player']).score += event['score']
+    
+    def run(self):
+        for i, row in self.data.iterrows():
+            self.processLogEvent(row)
+
+        for player in self.players:
+            player.currentState()
 
 
     

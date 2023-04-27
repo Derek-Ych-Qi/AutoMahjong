@@ -4,8 +4,8 @@ from Mahjong import *
 PLAYER_ACTIONS = ["NOTHING", "HU", "PENG", 'GANG']
 
 class Player(object):
-    def __init__(self):
-        self.id = None
+    def __init__(self, id=None):
+        self.id = id
         self.direction = None
         self.game = None
         self.revealed = []
