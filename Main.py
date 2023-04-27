@@ -12,7 +12,7 @@ def main():
     east, south, west, north = CheatingPlayer(900), SimpleAIPlayer(101), SimpleAIPlayer(102), SimpleAIPlayer(103)
     #east, south, west, north = HumanPlayer('Catherine'), CheatingPlayer(901), CheatingPlayer(902), CheatingPlayer(903)
     #east, south, west, north = DummyPlayer(0), DummyPlayer(1), DummyPlayer(2), DummyPlayer(3)
-    game = Game(players=[east, south, west, north], verbose=True)
+    game = Game(players=[east, south, west, north], verbose=True, observer=Observer())
     game.start()
 
 if __name__ == "__main__":

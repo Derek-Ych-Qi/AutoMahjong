@@ -6,6 +6,7 @@ PLAYER_ACTIONS = ["NOTHING", "HU", "PENG", 'GANG']
 class Player(object):
     def __init__(self):
         self.id = None
+        self.direction = None
         self.game = None
         self.revealed = []
         self.hidden = []

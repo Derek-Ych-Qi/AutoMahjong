@@ -1,16 +1,19 @@
 import logging
 import datetime
+import os
 import pdb
 import numpy as np
+import pandas as pd
 
 from Mahjong import *
 from Player import *
 
 class Game(object):
-    def __init__(self, players, verbose=False):
+    def __init__(self, players, verbose=False, observer=None):
         self.players = players
-        for player in players:
+        for direction, player in zip(['E', 'S', 'W', 'N'], players):
             player.game = self
+            player.direction = direction
         self.game_id = f"{datetime.datetime.now()}_{'_'.join([player.id for player in self.players])}"
         self.curr_player = np.random.choice(players)
         self.deck = [Mahjong(i) for i in range(TOTAL_CARDS)]
@@ -20,7 +23,7 @@ class Game(object):
         self.logger = logging.getLogger(self.game_id)
         self.logger.info(f"Game {self.game_id} init completed, first player is {self.curr_player.id}")
         self.verbose = verbose
-        self.observer = None
+        self.observer = observer
 
     def getNextPlayer(self, player):
         i = self.players.index(player)
@@ -47,6 +50,8 @@ class Game(object):
     def onCardServed(self, card, player, afterGang=False):
         self.logger.info(f"Player {player.id} draw card {card} afterGang={afterGang} remaining deck={len(self.deck)}")
         gameEvent = {'type':'draw', 'player':player, 'card':card, 'afterGang':afterGang}
+        if self.observer:
+            self.observer.processEvent(gameEvent)
         player.draw(card)
         player_action = player.anyActionSelf()
         if player_action == 'HU':
@@ -62,10 +67,12 @@ class Game(object):
                 score = 2 ** MAX_FAN
             else:
                 score = calcScore( *player.hashHand(), zimo_fan)
-            gameEvent = {'type':'HU', 'player':player, 'card':card, 'source':'all', 'score':score}
+            gameEvent = {'type':'hu', 'player':player, 'card':card, 'source':'all', 'score':score}
             self.huEvent.append(gameEvent)
             self.logger.info(f"Player {player.id} HU card {card} self draw")
             self.processEvent(self.huEvent[-1])
+            if self.observer:
+                self.observer.processEvent(gameEvent)
             player.hule = True
             if card:
                 player.hidden.remove(card)
@@ -75,6 +82,8 @@ class Game(object):
             self.logger.info(f"Player {player.id} GANG card {card} self draw")
             gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':'all', 'score':base}
             self.gangEvent.append(gameEvent)
+            if self.observer:
+                self.observer.processEvent(gameEvent)
             self.processEvent(self.gangEvent[-1])
             self.onCardServed(self.deck.pop(), player, afterGang=True)
         else: #Nothing
@@ -86,7 +95,9 @@ class Game(object):
     def onCardPlayed(self, card, source_player, afterGang=False):
         source_player.discardedList.append(card)
         self.logger.info(f"Player {source_player.id} played card {card} afterGang={afterGang}")
-        gameEvent = {'type':'play', 'player':source_player, 'card':card, 'afterGang':afterGang}
+        gameEvent = {'type':'play', 'player':source_player, 'card':card, 'afterGang':afterGang}            
+        if self.observer:
+                self.observer.processEvent(gameEvent)
         action_list_others = []
         for player in self.players:
             if player == source_player:
@@ -103,8 +114,10 @@ class Game(object):
                         source_player = player1
                         gangFan += 1
                 score = calcScore( player.hashHand()[0], tuple(sorted(player.hidden+[card])), gangFan)
-                gameEvent = {'type':'HU', 'player':player, 'card':card, 'source':source_player, 'score':score}
+                gameEvent = {'type':'hu', 'player':player, 'card':card, 'source':source_player, 'score':score}
                 self.huEvent.append(gameEvent)
+                if self.observer:
+                    self.observer.processEvent(gameEvent)
                 self.processEvent(self.huEvent[-1])
                 player.hule = True
                 player.huList.append(card)
@@ -113,6 +126,8 @@ class Game(object):
             elif action == "PENG" and player.canPeng(card) and not player.hule:
                 self.logger.info(f"Player {player.id} PENG card {card} from player {source_player.id}")
                 gameEvent = {'type':'peng', 'player':player, 'card':card, 'source':source_player}
+                if self.observer:
+                    self.observer.processEvent(gameEvent)
                 player.peng(card)
                 self.curr_player = player
                 self.onCardPlayed(player.discard(), player, False)
@@ -122,6 +137,8 @@ class Game(object):
                 base = player.gang(card, fromHand=False)
                 gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':source_player, 'score':base}
                 self.gangEvent.append(gameEvent)
+                if self.observer:
+                    self.observer.processEvent(gameEvent)
                 self.processEvent(self.gangEvent[-1])
                 self.curr_player = player
                 self.onCardServed(self.deck.pop(), player, afterGang=True)
@@ -133,9 +150,15 @@ class Game(object):
         #initial hand
         player = self.curr_player
         for i in range(52):
-            player.draw(self.deck.pop(0))
+            card = self.deck.pop(0)
+            player.draw(card)
+            if self.observer:
+                self.observer.processEvent({'type':'draw', 'player':player, 'card':card, 'afterGang':False})
             player = self.getNextPlayer(player)
-        self.curr_player.draw(self.deck.pop(0))
+        card= self.deck.pop(0)
+        self.curr_player.draw(card)
+        if self.observer:
+            self.observer.processEvent({'type':'draw', 'player':player, 'card':card, 'afterGang':False})
         #pass three cards
         passing_index = np.random.randint(1,3)
         passing_cards = {}
@@ -158,6 +181,8 @@ class Game(object):
         self.end()
         if self.verbose:
             self.summary()
+        if self.observer:
+            self.observer.end()
     
     def end(self):
         self.logger.info("### End Game ###")
@@ -207,6 +232,24 @@ class Game(object):
 
 class Observer(object):
     def __init__(self):
-        pass
+        self.current_event_id = 0
+        self.all_events = []
+        self.logDir = './gamelog'
+        self.id = datetime.datetime.now().strftime("%Y%m%d%H%M%S.%f")
+    
+    def processEvent(self, event):
+        self.current_event_id += 1
+        event.update({'id':self.current_event_id})
+        self.all_events.append(event)
+    
+    def end(self):
+        for event in self.all_events:
+            if isinstance(event.get('player'), Player):
+                event['player'] = event['player'].direction
+            if isinstance(event.get('source'), Player):
+                event['source'] = event['source'].direction
+        event_df = pd.DataFrame(self.all_events)
+        event_df.to_csv(os.path.join(self.logDir, f'event_{self.id}.csv'), index=False)
+
 
     
