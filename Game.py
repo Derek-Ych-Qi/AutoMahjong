@@ -263,12 +263,14 @@ class Observer(object):
 class GameLogReader(object):
     def __init__(self, filepath):
         self.data = pd.read_csv(filepath)
+        self.remaining_tiles = TOTAL_CARDS
         self.players = [Player('E'), Player('S'), Player('W'), Player('N')]
         self.playersMap = dict(zip(['E', 'S', 'W', 'N'], self.players))
     
     def processLogEvent(self, event):
         if event['type'] == 'draw':
             if not pd.isnull(event['card']):
+                self.remaining_tiles -= 1
                 self.playersMap.get(event['player']).draw( Mahjong(event['card']) )
         elif event['type'] == 'play':
             self.playersMap.get(event['player']).discardCardStr(event['card'])
@@ -313,10 +315,21 @@ class GameLogReader(object):
                 self.playersMap.get(event['source']).score -= event['score']
                 self.playersMap.get(event['player']).score += event['score']
     
+    def recordState(self, current_event):
+        state = {}
+        # deck info
+        state['remaining_tiles'] = self.remaining_tiles
+        # player info
+        state['current_player'] = current_event['player']
+        player = self.playersMap.get(state['current_player'])
+        player_hand = player.revealed, player.hidden
+
+        # 
+
     def run(self):
         for i, row in self.data.iterrows():
             self.processLogEvent(row)
-
+            self.recordState(row)
         for player in self.players:
             player.currentState()
 
