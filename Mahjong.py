@@ -43,21 +43,21 @@ class Mahjong(object):
         return chr(0x1F007 + self.__hash__())
 
 @lru_cache
-def _isPair(x:tuple) -> bool:
+def isPair(x:tuple) -> bool:
     if len(x) != 2:
         return False
     else:
         return x[0] == x[1]
 
 @lru_cache
-def _isKeorGang(x:tuple) -> bool:
+def isKeorGang(x:tuple) -> bool:
     if len(x) < 3:
         return False
     else:
         return all([i == x[0] for i in x])
 
 @lru_cache
-def _isSet(x:tuple) -> bool:
+def isSet(x:tuple) -> bool:
     if len(x) != 3:
         return False
     elif x[0].suit != x[1].suit or x[0].suit != x[2].suit or x[2].num - x[0].num >= 3:
@@ -75,11 +75,11 @@ cardsToStr = lambda cards : [str(c) for c in cards]
 @lru_cache
 def allPairs(revealed:tuple, hidden:tuple) -> tuple:
     #utilize the sorted feature
-    if _isPair(hidden):
+    if isPair(hidden):
         res = list(revealed)
         res.append(hidden)
         return (True, res)
-    elif _isPair(hidden[0:2]):
+    elif isPair(hidden[0:2]):
         new_revealed, new_hidden = list(revealed), list(hidden)
         new_revealed.append( (new_hidden.pop(1), new_hidden.pop(0)) )
         #print(tuple(new_revealed), tuple(new_hidden))
@@ -90,7 +90,7 @@ def allPairs(revealed:tuple, hidden:tuple) -> tuple:
 @lru_cache
 def huHelper(revealed:tuple, hidden:tuple) -> tuple:
     #print(revealed, hidden)
-    if _isPair(hidden):
+    if isPair(hidden):
         res = list(revealed)
         res.append(hidden)
         return (True, res)
@@ -101,7 +101,7 @@ def huHelper(revealed:tuple, hidden:tuple) -> tuple:
         for i in range(0, len(hidden)-2):
             for j in range(i+1, min(i+7, len(hidden)-1)):
                 for k in range(j+1, min(i+8, len(hidden))):
-                    if _isSet((hidden[i], hidden[j], hidden[k])):
+                    if isSet((hidden[i], hidden[j], hidden[k])):
                         new_revealed, new_hidden = list(revealed), list(hidden)
                         new_revealed.append((new_hidden.pop(k), new_hidden.pop(j), new_hidden.pop(i)))
                         hu, style = huHelper(tuple(new_revealed), tuple(new_hidden))
@@ -128,7 +128,7 @@ def styleScore(revealed:tuple, hidden:tuple) -> int:
     hand = [card for ke in revealed for card in ke] + list(hidden)
     if len(hidden) == 2: #金钩钓
         fan += 1
-    if all([_isKeorGang(ke) for ke in style if len(ke) > 2]): #碰碰胡
+    if all([isKeorGang(ke) for ke in style if len(ke) > 2]): #碰碰胡
         fan += 1
     if (min([x.num for x in hand]) > 1) and (max([x.num for x in hand]) < 9): #断幺九
         fan += 1
