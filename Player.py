@@ -96,6 +96,16 @@ class Player(object):
                     return True
             #暗杠
             if hidden_str.count(str(card)) >= 4:
+                if not self.hule:
+                    return True
+                else:
+                    new_revealed, new_hidden = self.hashHand()
+                    for hu_tile in self.huList:
+                        hu, style = hulema(new_revealed, tuple(sorted(self.hidden + [hu_tile])))
+                        for k in style:
+                            if card in k:
+                                if not isKeorGang(k):
+                                    return False
                 return True
             return False
         elif hidden_str.count(str(card)) >= 3: #明杠暗刻

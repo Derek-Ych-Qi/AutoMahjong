@@ -77,7 +77,7 @@ class Game(object):
             if card:
                 player.hidden.remove(card)
             player.huList.append(card)
-        elif player_action == 'GANG' and player.canGang(card, fromHand=True) and len(self.deck) > 0: #FIXME 胡了可以杠但是不可改变听的牌
+        elif player_action == 'GANG' and player.canGang(card, fromHand=True) and len(self.deck) > 0:
             base = player.gang(card, fromHand=True) #FIXME 杠手中其他牌
             self.logger.info(f"Player {player.id} GANG card {card} self draw")
             gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':'all', 'score':base}
