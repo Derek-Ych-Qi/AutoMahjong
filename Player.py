@@ -129,7 +129,7 @@ class Player(object):
                 if str(ke[0]) == str(card):
                     ke.append(card) #明杠
                     self.hidden.remove(card)
-                return 1
+                    return 1
             if cardsToStr(self.hidden).count(str(card)) >= 4:
                 i = cardsToStr(self.hidden).index(str(card))
                 j = cardsToStr(self.hidden).index(str(card), i+1)

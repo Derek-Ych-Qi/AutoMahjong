@@ -9,7 +9,9 @@ from Mahjong import *
 from Player import *
 
 class Game(object):
-    def __init__(self, players, verbose=False, observer=None):
+    def __init__(self, players, verbose=False, observer=None, seed=None):
+        if seed:
+            np.random.seed(seed)
         self.players = players
         for direction, player in zip(['E', 'S', 'W', 'N'], players):
             player.game = self

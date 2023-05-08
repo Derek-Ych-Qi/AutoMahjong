@@ -3,6 +3,7 @@ from Mahjong import *
 from PlayerImpl import *
 import logging
 import pandas as pd
+from collections import deque
 logging.basicConfig(level='WARNING')
 #logging.basicConfig(level="INFO", filename='./gamelog/simgame.log', filemode='w', format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -12,12 +13,15 @@ import numpy as np
 scores = []
 
 def main():
-    for i in range(10):
-        print(f"Game {i+1}")
-        east, south, west, north = CheatingPlayer(900), SimpleAIPlayer(101), SimpleAIPlayer(102), SimpleAIPlayer(103)
-        game = Game(players=[east, south, west, north], verbose=False, observer=Observer())
-        game.start()
-        scores.append(dict(zip([p.id for p in game.players], [p.score for p in game.players]))) 
+    for i in range(4):
+        seed = np.random.randint(0,2**31)
+        print(f"Game {i+1}, seed={seed}")
+        for j in range(4):
+            players = deque([CheatingPlayer(900), SimpleAIPlayer(101), SimpleAIPlayer(102), SimpleAIPlayer(103)])
+            players.rotate(j)
+            game = Game(players=list(players), verbose=False, observer=Observer(), seed=seed)
+            game.start()
+            scores.append(dict(zip([p.id for p in game.players], [p.score for p in game.players]))) 
     score_df = pd.DataFrame(scores)
     total_df = score_df.sum()
     print(score_df)

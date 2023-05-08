@@ -1,4 +1,5 @@
 from Player import *
+import pdb
 
 class HumanPlayer(Player):
     def __init__(self, name):
@@ -233,7 +234,7 @@ class SimpleAIPlayer(Player):
             _suit_nums[card.suit].append(card.num)
         _suit_nums_diff_map = {'W':[], 'S':[], 'P':[]}
         for suit in ALL_SUITS:
-            if suit == self.shortSuit:
+            if suit == self.shortSuit or len(_suit_nums[suit]) == 0:
                 continue
             _suit_nums_diff_map[suit] = list(np.abs(_suit_nums[suit] - np.mean(_suit_nums[suit])))
         _suit_nums_diff_list = _suit_nums_diff_map['P'] + _suit_nums_diff_map['S'] + _suit_nums_diff_map['W'] #  sequence of this should be corresponding to self.hidden
@@ -339,6 +340,8 @@ class CheatingPlayer(Player):
     def anyActionSelf(self):
         if self.hu() > 0:
             return "HU"
+        elif any( [self.canGang(card) for card in self.hidden] ):
+            return "GANG"
         else:
             return "NOTHING"
 
@@ -351,19 +354,13 @@ class CheatingPlayer(Player):
             if card.suit == self.shortSuit:
                 discard_index = i
                 return self.hidden.pop(discard_index)
-        
+    
         if not self.oneSuit is None:
-            #清一色的防守机制
-            if len(self.game.deck) < 16 and len(self.tingList) == 0 and len(set([x.suit for x in self.hidden])) > 1:
-                #self.oneSuit = None
-                pass
-            else:
-            #做清一色
-                for i in range(len(self.hidden)):
-                    card = self.hidden[i]
-                    if card.suit != self.oneSuit:
-                        discard_index = i
-                        return self.hidden.pop(discard_index)
+            for i in range(len(self.hidden)):
+                card = self.hidden[i]
+                if card.suit != self.oneSuit:
+                    discard_index = i
+                    return self.hidden.pop(discard_index)
 
         #优先听牌
         discard_index = 999
@@ -372,14 +369,14 @@ class CheatingPlayer(Player):
             if i == 0:
                 fake_hidden = self.hidden[1:]
             elif i == len(self.hidden)-1:
-                fake_hidden = self.hidden[0:i-1]
+                fake_hidden = self.hidden[0:i]
             else:
-                fake_hidden = self.hidden[0:i-1] + self.hidden[i+1:]
+                fake_hidden = self.hidden[0:i] + self.hidden[i+1:]
             revealed_tuple, hidden_tuple = self.hashHand()
             tinglist = tingpai( revealed_tuple, tuple(fake_hidden))
             tingscore = 0
             for ting in tinglist:
-                tingscore += ting[1] * (sum([self._remainingInHand(p, ting[0]) for p in self.game.players if (p != self and not p.hule)]) + self._remainingInDeck(ting[0])*(0.75+0.25*6)) #别人手里1倍，牌堆25%自摸翻倍收三家
+                tingscore += ting[1] * (sum([self._remainingInHand(p, ting[0]) for p in self.game.players if (p != self and not p.hule)]) + self._remainingInDeck(ting[0])*(0.75+0.25*6)) + 0.001 #别人手里1倍，牌堆25%自摸翻倍收三家
             tingscore_list.append(tingscore)
         
         if len(tingscore_list) > 0 and max(tingscore_list) > 0 and (len(self.game.deck) < 16 or self._dianPao(str(self.hidden[i])) < tingscore * 0.8): #听牌分数超过自己点炮分数的80%
@@ -390,7 +387,7 @@ class CheatingPlayer(Player):
                 _suit_nums[card.suit].append(card.num)
             _suit_nums_diff_map = {'W':[], 'S':[], 'P':[]}
             for suit in ALL_SUITS:
-                if suit == self.shortSuit:
+                if suit == self.shortSuit or len(_suit_nums[suit]) == 0:
                     continue
                 _suit_nums_diff_map[suit] = list(np.abs(_suit_nums[suit] - np.mean(_suit_nums[suit])))
             _suit_nums_diff_list = _suit_nums_diff_map['P'] + _suit_nums_diff_map['S'] + _suit_nums_diff_map['W'] # sequence of this should be corresponding to self.hidden
@@ -409,7 +406,6 @@ class CheatingPlayer(Player):
                 return self.hidden.pop(np.random.choice(range(len(self.hidden))))
             maxdiff = max(diff_discard)
             discard_index = discardRange[diff_discard.index(maxdiff)]
-
         return self.hidden.pop(discard_index)
 
     def anyActionOther(self, card, source_player):
@@ -423,7 +419,9 @@ class CheatingPlayer(Player):
         elif self.canGang(card):
             return "GANG"
         elif self.canPeng(card):
-            if self.oneSuit is None:
+            if card in self.discardedList:
+                return "NOTHING"
+            elif self.oneSuit is None:
                 return "PENG"
             elif card.suit == self.oneSuit:
                 return "PENG"
