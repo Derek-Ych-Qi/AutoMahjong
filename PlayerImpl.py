@@ -213,9 +213,9 @@ class SimpleAIPlayer(Player):
             if i == 0:
                 fake_hidden = self.hidden[1:]
             elif i == len(self.hidden)-1:
-                fake_hidden = self.hidden[0:i-1]
+                fake_hidden = self.hidden[0:i]
             else:
-                fake_hidden = self.hidden[0:i-1] + self.hidden[i+1:]
+                fake_hidden = self.hidden[0:i] + self.hidden[i+1:]
             revealed_tuple, hidden_tuple = self.hashHand()
             tinglist = tingpai( revealed_tuple, tuple(fake_hidden))
             tingscore = 0
@@ -259,7 +259,9 @@ class SimpleAIPlayer(Player):
         elif self.canGang(card):
             return "GANG"
         elif self.canPeng(card):
-            if self.oneSuit is None:
+            if card in self.discardedList:
+                return "NOTHING"
+            elif self.oneSuit is None:
                 return "PENG"
             elif card.suit == self.oneSuit:
                 return "PENG"
