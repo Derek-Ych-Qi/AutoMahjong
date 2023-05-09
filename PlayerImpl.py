@@ -185,6 +185,8 @@ class SimpleAIPlayer(Player):
     def anyActionSelf(self):
         if self.hu() > 0:
             return "HU"
+        elif any( [self.canGang(card) for card in self.hidden] ):
+            return "GANG"
         else:
             return "NOTHING"
     
@@ -272,53 +274,10 @@ class SimpleAIPlayer(Player):
     
 ############################################################################################################
 
-class CheatingPlayer(Player):
+class CheatingPlayer(SimpleAIPlayer):
     def __init__(self, id):
-        super().__init__()
+        super().__init__(id)
         self.id = f"Cheating_{id}"
-        self.planned = False
-        self.oneSuit = None
-        self.pengpeng = False
-    
-    def passThreeCards(self):
-        _suit_map = {'W':[], 'P':[], 'S':[]}
-        for card in self.hidden:
-            _suit_map[card.suit].append(card)
-        suits = ['W', 'P', 'S']
-        np.random.shuffle(suits)
-        min_cards = 14
-        for suit in suits:
-            if len(_suit_map[suit]) < 3:
-                continue
-            elif len(_suit_map[suit]) <= min_cards:
-                passingSuit = suit
-                min_cards = len(_suit_map[suit])
-        _passing = np.random.choice(_suit_map[passingSuit], 3, replace=False)
-        return [self.discardCard(x) for x in _passing]
-
-    def claimShortSuit(self):
-        _suit_map = {'W':0, 'P':0, 'S':0}
-        for card in self.hidden:
-            _suit_map[card.suit] += 1
-        shortSuit = 'W'
-        for suit in ['S', 'P']:
-            if _suit_map[suit] < _suit_map[shortSuit]:
-                shortSuit = suit
-        self.shortSuit = shortSuit
-        return shortSuit
-
-    def plan(self):
-        """
-        called after initial hand, make a brief game plan
-        """
-        _suit_lists = [0,0,0]
-        for card in self.hidden:
-            _suit_lists[ALL_SUITS.index(card.suit)] += 1
-        if max(_suit_lists) >= 8:
-            self.oneSuit = ALL_SUITS[_suit_lists.index(max(_suit_lists))] #清一色
-        if countKeAndPair([c for c in self.hidden if c.suit != self.shortSuit]) >= 3:
-            self.pengpeng = True
-        self.planned = True
 
     ### Cheat functions
     def _remainingInHand(self, other_player, cardstr):
@@ -338,14 +297,6 @@ class CheatingPlayer(Player):
                     losePoint += ting[1] * gangMult
         return losePoint
     ### End Cheat functions
-
-    def anyActionSelf(self):
-        if self.hu() > 0:
-            return "HU"
-        elif any( [self.canGang(card) for card in self.hidden] ):
-            return "GANG"
-        else:
-            return "NOTHING"
 
     def discard(self):
         if not self.planned:
@@ -410,24 +361,3 @@ class CheatingPlayer(Player):
             discard_index = discardRange[diff_discard.index(maxdiff)]
         return self.hidden.pop(discard_index)
 
-    def anyActionOther(self, card, source_player):
-        if self.oneSuit and card.suit != self.oneSuit:
-            return "NOTHING"
-
-
-        revealed_tuple, hidden_tuple = self.hashHand()
-        if calcScore( revealed_tuple, tuple(self.hidden + [card]), 0) > 0:
-            return "HU"
-        elif self.canGang(card):
-            return "GANG"
-        elif self.canPeng(card):
-            if card in self.discardedList:
-                return "NOTHING"
-            elif self.oneSuit is None:
-                return "PENG"
-            elif card.suit == self.oneSuit:
-                return "PENG"
-            else:
-                return "NOTHING"
-        else:
-            return "NOTHING"
