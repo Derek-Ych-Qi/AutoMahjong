@@ -361,3 +361,91 @@ class CheatingPlayer(SimpleAIPlayer):
             discard_index = discardRange[diff_discard.index(maxdiff)]
         return self.hidden.pop(discard_index)
 
+################################################################################################
+
+class ModelBasedPlayer(Player):
+    def __init__(self, id, model):
+        super().__init__(id)
+        self.id = f"ModelBased_{id}"
+        self.model = model
+
+    def passThreeCards(self):
+        toPass = self.passModel.action(self.hashHand())
+        return toPass
+    
+    def claimShortSuit(self):
+        shortSuit = self.shortSuitModel.action(self.hashHand())
+        return shortSuit
+    
+    def anyActionSelf(self):
+        actionSelf = self.selfActionModel.action(self.hashHand())
+        return actionSelf
+    
+    def anyActionOther(self, card):
+        actionOther = self.otherActionModel.action(self.hashHand(), card)
+        return actionOther
+    
+    def discard(self):
+        discard = self.discardModel.action(self.hashHand())
+        return discard
+
+################################################################################################
+
+class RandomAIPlayer(SimpleAIPlayer):
+    def __init__(self, id, randomLambda=0.1):
+        super().__init__(id)
+        self.id = f"RandomAI_{id}_{randomLambda}"
+        self.randomLambda = randomLambda
+
+    def passThreeCards(self):
+        if np.random.random() < self.randomLambda:
+            while True:
+                toPass = np.random.choice(self.hidden, 3, replace=False)
+                if (toPass[0].suit == toPass[1].suit) and (toPass[1].suit == toPass[2].suit):
+                    break
+            toPass = [self.discardCard(toPass[0]),self.discardCard(toPass[1]),self.discardCard(toPass[2])]
+        else:
+            toPass = super().passThreeCards()
+        return toPass
+    
+    def claimShortSuit(self):
+        if np.random.random() < self.randomLambda:
+            shortSuit = np.random.choice(ALL_SUITS)
+            self.shortSuit = shortSuit
+        else:
+            shortSuit = super().claimShortSuit()
+        return shortSuit
+    
+    def anyActionSelf(self):
+        if np.random.random() < self.randomLambda:
+            legal_actions = ["NOTHING"]
+            if self.hu() > 0:
+                legal_actions.append("HU")
+            if any( [self.canGang(tile, fromHand=True) for tile in self.hidden] ):
+                legal_actions.append("GANG")
+            actionSelf = np.random.choice(legal_actions)
+        else:
+            actionSelf = super().anyActionSelf()
+        return actionSelf
+    
+    def anyActionOther(self, card, source_player):
+        if np.random.random() < self.randomLambda:
+            legal_actions = ["NOTHING"]
+            if self.hu() > 0:
+                legal_actions.append("HU")
+            if self.canGang(card, fromHand=False):
+                legal_actions.append("GANG")
+            if self.canPeng(card):
+                legal_actions.append("PENG")
+            actionOther = np.random.choice(legal_actions)
+        else:
+            actionOther = super().anyActionOther(card, source_player)
+        return actionOther
+    
+    def discard(self):
+        if np.random.random() < self.randomLambda:
+            discard_index = np.random.randint(0,len(self.hidden))
+            discard = self.hidden.pop(discard_index)
+        else:
+            discard = super().discard()
+        return discard

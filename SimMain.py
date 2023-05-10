@@ -17,7 +17,7 @@ def main():
         seed = np.random.randint(0,2**31)
         print(f"Game {i+1}, seed={seed}")
         for j in range(4):
-            players = deque([CheatingPlayer(900), SimpleAIPlayer(101), SimpleAIPlayer(102), SimpleAIPlayer(103)])
+            players = deque([CheatingPlayer(900), SimpleAIPlayer(101), RandomAIPlayer(102, 0.01), RandomAIPlayer(103, 0.1)])
             players.rotate(j)
             game = Game(players=list(players), verbose=False, observer=Observer(), seed=seed)
             game.start()
