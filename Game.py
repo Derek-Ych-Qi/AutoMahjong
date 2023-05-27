@@ -69,7 +69,7 @@ class Game(object):
                 score = 2 ** MAX_FAN
             else:
                 score = calcScore( *player.hashHand(), zimo_fan)
-            gameEvent = {'type':'hu', 'player':player, 'card':card, 'source':'all', 'score':score}
+            gameEvent = {'type':'hu', 'player':player, 'card':card, 'source':'all', 'score':score, 'action':1}
             self.huEvent.append(gameEvent)
             self.logger.info(f"Player {player.id} HU card {card} self draw")
             self.processEvent(self.huEvent[-1])
@@ -82,13 +82,16 @@ class Game(object):
         elif player_action == 'GANG' and player.canGang(card, fromHand=True) and len(self.deck) > 0:
             base = player.gang(card, fromHand=True) #FIXME 杠手中其他牌
             self.logger.info(f"Player {player.id} GANG card {card} self draw")
-            gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':'all', 'score':base}
+            gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':'all', 'action':1, 'score':base}
             self.gangEvent.append(gameEvent)
             if self.observer:
                 self.observer.processEvent(gameEvent)
             self.processEvent(self.gangEvent[-1])
             self.onCardServed(self.deck.pop(), player, afterGang=True)
         else: #Nothing
+            if player.canGang(card, fromHand=True):
+                gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':'all', 'action':0, 'score':0}
+                self.observer.processEvent(gameEvent)
             if player.hule:
                 self.onCardPlayed(player.discardCard(card), player, afterGang)
             else:
@@ -97,7 +100,7 @@ class Game(object):
     def onCardPlayed(self, card, source_player, afterGang=False):
         source_player.discardedList.append(card)
         self.logger.info(f"Player {source_player.id} played card {card} afterGang={afterGang}")
-        gameEvent = {'type':'play', 'player':source_player, 'card':card, 'afterGang':afterGang}            
+        gameEvent = {'type':'play', 'player':source_player, 'card':card, 'afterGang':afterGang}      
         if self.observer:
                 self.observer.processEvent(gameEvent)
         action_list_others = []
@@ -116,7 +119,7 @@ class Game(object):
                         source_player = player1
                         gangFan += 1
                 score = calcScore( player.hashHand()[0], tuple(sorted(player.hidden+[card])), gangFan)
-                gameEvent = {'type':'hu', 'player':player, 'card':card, 'source':source_player, 'score':score}
+                gameEvent = {'type':'hu', 'player':player, 'card':card, 'source':source_player, 'score':score, 'action':1}
                 self.huEvent.append(gameEvent)
                 if self.observer:
                     self.observer.processEvent(gameEvent)
@@ -127,7 +130,7 @@ class Game(object):
                 break
             elif action == "PENG" and player.canPeng(card) and not player.hule:
                 self.logger.info(f"Player {player.id} PENG card {card} from player {source_player.id}")
-                gameEvent = {'type':'peng', 'player':player, 'card':card, 'source':source_player}
+                gameEvent = {'type':'peng', 'player':player, 'card':card, 'source':source_player, 'action':1}
                 if self.observer:
                     self.observer.processEvent(gameEvent)
                 player.peng(card)
@@ -137,7 +140,7 @@ class Game(object):
             elif action == "GANG" and player.canGang(card, fromHand=False) and len(self.deck) > 0:
                 self.logger.info(f"Player {player.id} GANG card {card} from player {source_player.id}")
                 base = player.gang(card, fromHand=False)
-                gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':source_player, 'score':base}
+                gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':source_player, 'score':base, 'action':1}
                 self.gangEvent.append(gameEvent)
                 if self.observer:
                     self.observer.processEvent(gameEvent)
@@ -146,6 +149,16 @@ class Game(object):
                 self.onCardServed(self.deck.pop(), player, afterGang=True)
                 break
             else:
+                #Nothing
+                if card in player.tingList:
+                    gameEvent = {'type':'hu', 'player':player, 'card':card, 'source':source_player, 'action':0, 'score':0}
+                    self.observer.processEvent(gameEvent)
+                if player.canGang(card, fromHand=False):
+                    gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':source_player, 'action':0, 'score':0}
+                    self.observer.processEvent(gameEvent)
+                if player.canPeng(card):
+                    gameEvent = {'type':'peng', 'player':player, 'card':card, 'source':source_player, 'action':0}
+                    self.observer.processEvent(gameEvent)
                 continue
     
     def start(self):
@@ -268,6 +281,7 @@ class GameLogReader(object):
         self.remaining_tiles = TOTAL_CARDS
         self.players = [Player('E'), Player('S'), Player('W'), Player('N')]
         self.playersMap = dict(zip(['E', 'S', 'W', 'N'], self.players))
+        self.q_table = []
     
     def processLogEvent(self, event):
         if event['type'] == 'draw':
@@ -277,11 +291,12 @@ class GameLogReader(object):
         elif event['type'] == 'play':
             self.playersMap.get(event['player']).discardCardStr(event['card'])
         elif event['type'] == 'pass':
+            self.playersMap.get(event['source']).shortSuit = event['card'][-1]
             self.playersMap.get(event['source']).discardCardStr(event['card'])
             self.playersMap.get(event['player']).draw( Mahjong(event['card']) )
-        elif event['type'] == 'peng':
+        elif event['type'] == 'peng' and event['action'] > 0:
             self.playersMap.get(event['player']).peng(Mahjong(event['card']))
-        elif event['type'] == 'gang':
+        elif event['type'] == 'gang' and event['action'] > 0:
             self.playersMap.get(event['player']).gang(Mahjong(event['card']))
             if event['source'] == 'all':
                 for p in self.players:
@@ -292,7 +307,7 @@ class GameLogReader(object):
             else:
                 self.playersMap.get(event['source']).score -= event['score']
                 self.playersMap.get(event['player']).score += event['score']
-        elif event['type'] == 'hu':
+        elif event['type'] == 'hu' and event['action'] > 0:
             self.playersMap.get(event['player']).hule = True
             if event['source'] == 'all':
                 for p in self.players:
@@ -317,23 +332,69 @@ class GameLogReader(object):
                 self.playersMap.get(event['source']).score -= event['score']
                 self.playersMap.get(event['player']).score += event['score']
     
+    def resolve_action(self, event):
+        player = self.playersMap.get(event['player'])
+        action = -1
+        if event['type'] == 'draw':
+            pass
+        elif event['type'] == 'play':
+            action = player.hidden.index(Mahjong(event['card']))
+        elif event['type'] == 'pass':
+            pass
+        elif event['type'] == 'peng':
+            action = 1 if event['card'] != 'null' else 0
+        elif event['type'] == 'gang':
+            action = 1 if event['card'] != 'null' else 0
+        elif event['type'] == 'hu':
+            action = 1 if event['card'] != 'null' else 0
+        return action
+
     def recordState(self, current_event):
+        #before event
+        #event info
         state = {}
+        state['event_type'] = current_event['type']
+        state['current_player'] = current_event['player']
+        state['shortSuit'] = self.playersMap.get(state['current_player']).shortSuit
+        player = self.playersMap.get(state['current_player'])
+        state['action'] = self.resolve_action(current_event)
+        state['reward'] = current_event['score']
+        state['reward_final'] = 0 # Fill this later
         # deck info
         state['remaining_tiles'] = self.remaining_tiles
-        # player info
-        state['current_player'] = current_event['player']
-        player = self.playersMap.get(state['current_player'])
-        player_hand = player.revealed, player.hidden
-
-        # 
+        # player hand info
+        state.update(dict(zip([f'revealed_{i}' for i in range(27)], flatten(player.revealed))))
+        state.update(dict(zip([f'hidden_{i}' for i in range(27)], flatten(player.hidden))))
+        # discarded info
+        state.update(dict(zip([f'self_discarded_{i}' for i in range(27)], flatten(player.discardedList))))
+        pindex = self.players.index(player)
+        state['next1_shortSuit'] = self.players[(pindex+1)%4].shortSuit
+        state['next2_shortSuit'] = self.players[(pindex+2)%4].shortSuit
+        state['next3_shortSuit'] = self.players[(pindex+3)%4].shortSuit
+        state.update(dict(zip([f'next1_revealed_{i}' for i in range(27)], flatten(self.players[(pindex+1)%4].revealed))))
+        state.update(dict(zip([f'next2_revealed_{i}' for i in range(27)], flatten(self.players[(pindex+2)%4].revealed))))
+        state.update(dict(zip([f'next3_revealed_{i}' for i in range(27)], flatten(self.players[(pindex+3)%4].revealed))))
+        state.update(dict(zip([f'next1_hidden_{i}' for i in range(27)], flatten(self.players[(pindex+1)%4].hidden))))
+        state.update(dict(zip([f'next2_hidden_{i}' for i in range(27)], flatten(self.players[(pindex+2)%4].hidden))))
+        state.update(dict(zip([f'next3_hidden_{i}' for i in range(27)], flatten(self.players[(pindex+3)%4].hidden))))
+        state.update(dict(zip([f'next1_discarded_{i}' for i in range(27)], flatten(self.players[(pindex+1)%4].discardedList))))
+        state.update(dict(zip([f'next2_discarded_{i}' for i in range(27)], flatten(self.players[(pindex+2)%4].discardedList))))
+        state.update(dict(zip([f'next3_discarded_{i}' for i in range(27)], flatten(self.players[(pindex+3)%4].discardedList))))
+        #FIXME keep only recent discarded?
+        self.q_table.append(state)
 
     def run(self):
         for i, row in self.data.iterrows():
-            self.processLogEvent(row)
             self.recordState(row)
-        for player in self.players:
-            player.currentState()
+            self.processLogEvent(row)
+        #for player in self.players:
+        #    player.currentState()
+        
+        q_table = pd.DataFrame(self.q_table)
+        #add final score
+        for p in ['E', 'S', 'W', 'N']:
+            q_table.loc[q_table['current_player'] == p, 'reward_final'] = self.playersMap.get(p).score
+        return q_table
 
 
     

@@ -15,6 +15,7 @@ class Player(object):
         self.tingList = []
         self.discardedList = []
         self.score = 0
+        self.shortSuit = 'null'
         self.logger = logging.getLogger(self.id)
     
     def passThreeCards(self):

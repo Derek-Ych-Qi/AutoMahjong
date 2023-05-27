@@ -168,6 +168,15 @@ def tingpai(revealed:tuple, hidden:tuple) -> list:
                 tinglist.append([newcard.__str__(), score])
         return tinglist
 
+def flatten(tiles):
+    res = [0] * 27
+    for x in tiles:
+        if type(x) == Mahjong:
+            res[x.__hash__()] += 1
+        else:
+            res[x[0].__hash__()] += len(x)
+    return res
+
 def testHu():
     #card_id = np.random.randint(0,TOTAL_CARDS,14)
     #card_id = [0,1,2,3,4,5,6,7,8,27,54,35,62,83] #九莲宝灯
