@@ -91,7 +91,8 @@ class Game(object):
         else: #Nothing
             if player.canGang(card, fromHand=True):
                 gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':'all', 'action':0, 'score':0}
-                self.observer.processEvent(gameEvent)
+                if self.observer:
+                    self.observer.processEvent(gameEvent)
             if player.hule:
                 self.onCardPlayed(player.discardCard(card), player, afterGang)
             else:
@@ -102,7 +103,7 @@ class Game(object):
         self.logger.info(f"Player {source_player.id} played card {card} afterGang={afterGang}")
         gameEvent = {'type':'play', 'player':source_player, 'card':card, 'afterGang':afterGang}      
         if self.observer:
-                self.observer.processEvent(gameEvent)
+            self.observer.processEvent(gameEvent)
         action_list_others = []
         for player in self.players:
             if player == source_player:
@@ -150,15 +151,18 @@ class Game(object):
                 break
             else:
                 #Nothing
-                if card in player.tingList:
+                if str(card) in [x[0] for x in player.tingList]:
                     gameEvent = {'type':'hu', 'player':player, 'card':card, 'source':source_player, 'action':0, 'score':0}
-                    self.observer.processEvent(gameEvent)
+                    if self.observer:
+                        self.observer.processEvent(gameEvent)
                 if player.canGang(card, fromHand=False):
                     gameEvent = {'type':'gang', 'player':player, 'card':card, 'source':source_player, 'action':0, 'score':0}
-                    self.observer.processEvent(gameEvent)
+                    if self.observer:
+                        self.observer.processEvent(gameEvent)
                 if player.canPeng(card):
                     gameEvent = {'type':'peng', 'player':player, 'card':card, 'source':source_player, 'action':0}
-                    self.observer.processEvent(gameEvent)
+                    if self.observer:
+                        self.observer.processEvent(gameEvent)
                 continue
     
     def start(self):
